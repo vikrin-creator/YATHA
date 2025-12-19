@@ -33,7 +33,8 @@ jobs:
         run: |
           mkdir -p deploy
           cp -r frontend/dist/* deploy/
-          cp -r backend/* deploy/
+          mkdir -p deploy/backend
+          cp -r backend/* deploy/backend/
 
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -43,5 +44,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           port: 21
           local-dir: ./deploy/
-          server-dir: ./public_html/
+          server-dir: /public_html/
           dangerous-clean-slate: false
