@@ -1,0 +1,3 @@
+# Place public images here
+# Reference them in components like:
+# <img src="/images/photo.jpg" />
