@@ -2,23 +2,28 @@ import { Link } from 'react-router-dom'
 import HeaderLogo from '../assets/images/HeaderLogo.png'
 
 function Navbar() {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
     <header className="sticky top-0 z-50 bg-organic-beige/80 backdrop-blur-md">
       <div className="mx-auto w-full max-w-7xl px-4">
         <div className="flex items-center justify-center whitespace-nowrap border-b border-solid border-neutral-grey/20 py-6 relative">
-          <Link to="/" className="flex items-center absolute left-0">
+          <Link to="/" onClick={scrollToTop} className="flex items-center absolute left-0">
             <img src={HeaderLogo} alt="YATHA" className="h-16" />
           </Link>
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
+             <Link to="/" onClick={scrollToTop} className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
+              Home
+            </Link>
+            <Link to="/" onClick={scrollToTop} className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
               Shop
             </Link>
-            <Link to="/about" className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
+            <Link to="/about" onClick={scrollToTop} className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
               About
             </Link>
-            <a className="text-[#111518] text-sm font-medium leading-normal hover:text-primary" href="#">
-              Blog
-            </a>
+           
             <a className="text-[#111518] text-sm font-medium leading-normal hover:text-primary" href="#">
               Contact
             </a>
