@@ -15,10 +15,8 @@ function About() {
                 </span>
               </div>
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-clay-brown leading-tight">
-                About<br/>
-                <span className="text-clay-brown">
-                  YATHA
-                </span>
+                About YATHA
+                
               </h1>
               <p className="text-lg text-neutral-grey leading-relaxed">
                 Discover how a mother's quest for pure, natural nutrition transformed into a mission to bring honest superfoods to families across America.
@@ -114,11 +112,7 @@ function About() {
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-clay-brown tracking-tight mb-3 md:mb-4">
               Why <span className="text-clay-brown">YATHA</span>?
             </h2>
-            <div className="flex justify-center gap-2">
-              <div className="w-3 h-3 bg-soft-lavender rounded-full"></div>
-              <div className="w-3 h-3 bg-soft-lavender rounded-full"></div>
-              <div className="w-3 h-3 bg-soft-lavender/60 rounded-full"></div>
-            </div>
+            
           </div>
           
           <div className="grid md:grid-cols-2 gap-4 sm:gap-6 items-start mb-6 md:mb-8">
@@ -215,11 +209,7 @@ function About() {
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-clay-brown tracking-tight mb-3 md:mb-4">
               Meet Our <span className="text-clay-brown">Founder</span>
             </h2>
-            <div className="flex justify-center gap-2">
-              <div className="w-3 h-3 bg-soft-lavender rounded-full"></div>
-              <div className="w-3 h-3 bg-coral-sunset-pink rounded-full"></div>
-              <div className="w-3 h-3 bg-sunrise-peach rounded-full"></div>
-            </div>
+            
           </div>
           
           <div className="grid lg:grid-cols-5 gap-6 md:gap-8 lg:gap-12 items-center mb-8 md:mb-12 lg:mb-16">
