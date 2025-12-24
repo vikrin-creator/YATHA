@@ -3,8 +3,6 @@ import MoringaImage from '../assets/images/MoringaPowder.png'
 import BeetrootImage from '../assets/images/BeetrootPowder.png'
 import ABCImage from '../assets/images/ABC Powder.png'
 import TurmericImage from '../assets/images/TurmericPowder.png'
-import SoujanyaImage from '../assets/images/Soujanya.png'
-import PravalikaImage from '../assets/images/Pravalika.png'
 
 function Home() {
   return (
@@ -20,11 +18,11 @@ function Home() {
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight">
             Purity in Every Scoop. Wellness in Every Sip.
           </h1>
-          <p className="mt-3 sm:mt-4 text-base sm:text-lg md:text-xl font-light">
+          <p className="mt-3 sm:mt-4 text-base sm:text-lg md:text-xl font-light text-amber-500">
             Raw, organic superfoods sourced with integrity for your daily vitality.
           </p>
           <div className="mt-6 sm:mt-8">
-            <div className="inline-block bg-soft-lavender text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-bold text-base sm:text-lg">
+            <div className="inline-block bg-amber-500 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-bold text-base sm:text-lg">
               <span className="text-xl font-black">Buy Moringa</span> this month and get 30% OFF
             </div>
           </div>
@@ -76,7 +74,7 @@ function Home() {
       <section className="py-12 sm:py-16 lg:py-24">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <h2 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold text-clay-brown tracking-tight">Shop All Products</h2>
-          <div className="mt-8 sm:mt-10 md:mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          <div className="mt-8 sm:mt-10 md:mt-12 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             <div className="flex flex-col gap-3 group text-center">
               <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-200">
                 <img
@@ -124,75 +122,16 @@ function Home() {
       {/* Subscribe Section */}
       <section className="py-4 sm:py-6 md:py-8">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-          <div className="bg-soft-lavender rounded-xl p-6 sm:p-8 md:p-12 lg:p-16 flex flex-col lg:flex-row items-center gap-6 sm:gap-8 lg:gap-16">
-            <div className="lg:w-1/2 text-center lg:text-left">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Subscribe &amp; Save 10% Every Month</h2>
-              <p className="mt-3 sm:mt-4 text-base sm:text-lg text-white/80">
-                Never run out of your favorite superfoods. Get them delivered to your door and enjoy a permanent discount on every order. It's wellness, simplified.
-              </p>
-            </div>
-            <div className="lg:w-1/2 w-full">
-              <form className="flex w-full flex-col sm:flex-row gap-3">
-                <input
-                  className="form-input flex-grow rounded-full border-transparent h-14 px-5 placeholder:text-neutral-grey focus:ring-primary focus:border-primary text-lg"
-                  placeholder="Enter your email"
-                  type="email"
-                />
-                <button
-                  className="flex-shrink-0 items-center justify-center overflow-hidden rounded-full h-14 px-8 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-opacity-90 transition-colors"
-                  type="submit"
-                >
-                  Subscribe
-                </button>
-              </form>
-            </div>
+          <div className="bg-soft-lavender rounded-xl p-6 sm:p-8 md:p-12 lg:p-16 text-center">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Subscribe &amp; Save 10% Every Month</h2>
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-white/80 max-w-3xl mx-auto">
+              Never run out of your favorite superfoods. Get them delivered to your door and enjoy a permanent discount on every order. It's wellness, simplified.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Meet the Founders Section */}
-      <section className="py-8 sm:py-12 md:py-16">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-clay-brown tracking-tight">Meet the Founders</h2>
-          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-neutral-grey max-w-3xl mx-auto">
-            YATHA was born from a mother's love and a scientist's precision, founded by two visionaries dedicated to pure, accessible wellness for all.
-          </p>
-          <div className="mt-8 sm:mt-10 md:mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
-            <div className="flex flex-col items-center">
-              <img
-                alt="Professional headshot of Soujanya Nookala, CEO &amp; Co-Founder of YATHA."
-                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 object-cover rounded-full"
-                src={SoujanyaImage}
-              />
-              <h3 className="mt-4 sm:mt-5 md:mt-6 text-lg sm:text-xl font-bold text-[#111518]">Soujanya Nookala</h3>
-              <p className="text-xs sm:text-sm font-medium text-neutral-grey">CEO &amp; Co-Founder</p>
-              <p className="mt-2 text-sm sm:text-base text-neutral-grey">
-                With a background in nutritional science, Soujanya meticulously sources every ingredient, ensuring it meets the highest standards of quality.
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <img
-                alt="Professional headshot of Pravallika, CMO &amp; Co-Founder of YATHA."
-                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 object-cover rounded-full"
-                src={PravalikaImage}
-              />
-              <h3 className="mt-4 sm:mt-5 md:mt-6 text-lg sm:text-xl font-bold text-[#111518]">Pravallika</h3>
-              <p className="text-xs sm:text-sm font-medium text-neutral-grey">CMO &amp; Co-Founder</p>
-              <p className="mt-2 text-sm sm:text-base text-neutral-grey">
-                Pravallika's passion is sharing the YATHA story, connecting with our community and championing the mission of holistic wellness.
-              </p>
-            </div>
-          </div>
-          <div className="mt-12">
-            <a
-              className="inline-flex items-center justify-center overflow-hidden rounded-full h-12 px-8 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-opacity-90 transition-colors"
-              href="#"
-            >
-              <span className="truncate">Learn Our Story</span>
-            </a>
-          </div>
-        </div>
-      </section>
+      
     </div>
   )
 }

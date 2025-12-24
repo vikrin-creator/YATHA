@@ -16,11 +16,11 @@ function Navbar() {
         <div className="flex items-center justify-between border-b border-solid border-neutral-grey/20 py-3 md:py-4">
           {/* Logo */}
           <Link to="/" onClick={scrollToTop} className="flex items-center flex-shrink-0">
-            <img src={HeaderLogo} alt="YATHA" className="h-10 md:h-12 object-contain" />
+            <img src={HeaderLogo} alt="YATHA" className="h-8 md:h-10 lg:h-12 object-contain" />
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6 lg:gap-8 md:absolute md:left-1/2 md:-translate-x-1/2">
              <Link to="/" onClick={scrollToTop} className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
               Home
             </Link>
@@ -37,13 +37,19 @@ function Navbar() {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-2 md:gap-4">
+            {/* Search Icon (Mobile) */}
+            <button className="lg:hidden flex items-center justify-center rounded-full h-10 w-10 bg-white/50 text-[#111518] hover:bg-neutral-grey/10">
+              <span className="material-symbols-outlined">search</span>
+            </button>
+            
+            {/* Search Bar (Desktop) */}
             <label className="relative hidden lg:flex">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-neutral-grey">search</span>
               <input
-                className="form-input w-full min-w-0 flex-1 resize-none overflow-hidden rounded-full text-[#111518] border-neutral-grey/30 bg-white/50 h-10 placeholder:text-neutral-grey pl-10 pr-4 text-sm font-normal"
+                className="form-input w-80 resize-none overflow-hidden rounded-full text-[#111518] border-2 border-neutral-grey/40 bg-white h-12 placeholder:text-neutral-grey/60 pl-5 pr-12 text-base font-normal shadow-sm"
                 placeholder="Search"
                 type="text"
               />
+              <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-neutral-grey/80">search</span>
             </label>
             <div className="flex gap-2">
               <button className="hidden sm:flex items-center justify-center rounded-full h-10 w-10 bg-white/50 text-[#111518] hover:bg-neutral-grey/10">
