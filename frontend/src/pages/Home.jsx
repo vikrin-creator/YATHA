@@ -15,14 +15,17 @@ function Home() {
         }}
       >
         <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight">
-            Purity in Every Scoop. Wellness in Every Sip.
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight">
+            Purity in Every Scoop 
           </h1>
+          <p className="text-3xl sm:text-4xl md:text-5xl font-medium mt-2">
+            Wellness in Every Sip
+          </p>
           <p className="mt-3 sm:mt-4 text-base sm:text-lg md:text-xl font-light text-amber-500">
             Raw, organic superfoods sourced with integrity for your daily vitality.
           </p>
           <div className="mt-6 sm:mt-8">
-            <div className="inline-block bg-amber-500 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-bold text-base sm:text-lg">
+            <div className="inline-block bg-amber-500 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-bold text-base sm:text-lg cursor-pointer hover:bg-amber-600 hover:scale-105 hover:shadow-lg transition-all duration-300">
               <span className="text-xl font-black">Buy Moringa</span> this month and get 30% OFF
             </div>
           </div>

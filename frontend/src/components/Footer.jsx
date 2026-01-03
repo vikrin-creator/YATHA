@@ -10,7 +10,6 @@ function Footer() {
             <Link to="/" className="flex items-center">
               <img src={FooterLogo} alt="YATHA" className="h-16 sm:h-20 md:h-24" />
             </Link>
-            <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-neutral-grey">Purity in every scoop. Raw, organic superfoods for your daily wellness.</p>
           </div>
           <div>
             <h3 className="font-bold text-sm sm:text-base text-[#111518]">Shop</h3>
