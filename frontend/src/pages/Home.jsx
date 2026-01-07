@@ -16,7 +16,7 @@ function Home() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/products`)
+      const response = await fetch(`${API_BASE_URL}/api/products`)
       const data = await response.json()
       if (data.success) {
         // Filter featured products or take first 4
@@ -31,12 +31,12 @@ function Home() {
   }
 
   const getFullImageUrl = (imgPath) => {
-    if (!imgPath) return '/uploads/images/placeholder.png'
-    // If already has base URL, return as-is
-    if (imgPath.includes(API_BASE_URL)) return imgPath
-    // If it's a relative path, add base URL prefix
+    if (!imgPath) return `${API_BASE_URL}/uploads/images/placeholder.png`
+    // If already has full URL, return as-is
+    if (imgPath.startsWith('http')) return imgPath
+    // If it's an absolute path (starts with /), prepend base URL
     if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-    // If it's just a filename, add /uploads/images/ prefix
+    // If it's just a filename, add full path
     return `${API_BASE_URL}/uploads/images/${imgPath}`
   }
 
@@ -134,8 +134,8 @@ function Home() {
                     <img
                       alt={product.short_description || product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      src={product.images && product.images[0] 
-                        ? getFullImageUrl(product.images[0])
+                      src={product.image 
+                        ? getFullImageUrl(product.image)
                         : `${API_BASE_URL}/uploads/images/placeholder.png`}
                       onError={(e) => {
                         // Show placeholder div if image fails to load

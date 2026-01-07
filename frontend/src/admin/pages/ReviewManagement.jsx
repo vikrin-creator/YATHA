@@ -25,7 +25,7 @@ function ReviewManagement() {
 
   const fetchReviews = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/reviews`)
+      const response = await fetch(`${API_BASE_URL}/api/reviews`)
       const data = await response.json()
       if (data.success) {
         setReviews(data.data)
@@ -74,7 +74,7 @@ function ReviewManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/reviews/${editingReview.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/reviews/${editingReview.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -92,7 +92,7 @@ function ReviewManagement() {
   const handleDeleteReview = async (reviewId) => {
     if (confirm('Are you sure you want to delete this review?')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/reviews/${reviewId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/reviews/${reviewId}`, {
           method: 'DELETE'
         })
         const data = await response.json()

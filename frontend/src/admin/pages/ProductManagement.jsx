@@ -9,6 +9,7 @@ function ProductManagement() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [isFetching, setIsFetching] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -20,7 +21,7 @@ function ProductManagement() {
     category: 'Superfood Powders',
     status: 'active',
     featured: false,
-    images: []
+    image: ''
   })
   const [imageFiles, setImageFiles] = useState({
     main: null,
@@ -37,16 +38,38 @@ function ProductManagement() {
   }, [])
 
   const fetchProducts = async () => {
+    // Prevent multiple fetches at once
+    if (isFetching) {
+      console.log('⚠️ Fetch already in progress, skipping...')
+      return
+    }
+    
+    setIsFetching(true)
+    console.log('📥 Starting fetchProducts...')
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/products`)
+      const response = await fetch('http://localhost:8000/api/products')
+      console.log('✅ Received response:', response.status)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
       const data = await response.json()
+      console.log('📦 Data received:', data)
+      
       if (data.success) {
         setProducts(data.data)
+        console.log('✅ Products updated:', data.data.length)
+      } else {
+        console.error('❌ API returned error:', data.message)
       }
     } catch (error) {
-      console.error('Error fetching products:', error)
+      console.error('❌ Fetch error:', error)
     } finally {
+      setIsFetching(false)
       setLoading(false)
+      console.log('✅ fetchProducts completed')
     }
   }
 
@@ -114,29 +137,33 @@ function ProductManagement() {
       category: product.category || 'Superfood Powders',
       status: product.status || 'active',
       featured: product.featured || false,
-      images: product.images || []
+      image: product.image || ''
     })
     
     // Helper to construct full image URL from database path
     const getFullImageUrl = (imgPath) => {
       if (!imgPath) return ''
-      // If already has base URL, return as-is
-      if (imgPath.includes(API_BASE_URL)) return imgPath
-      // If it's a relative path, add base URL prefix
+      if (imgPath.startsWith('http')) return imgPath
       if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-      // If it's just a filename, add /uploads/images/ prefix
       return `${API_BASE_URL}/uploads/images/${imgPath}`
     }
     
-    // Set existing images for preview
-    const existingImages = product.images || []
+    // Set main image preview
+    const mainImage = product.image ? getFullImageUrl(product.image) : ''
+    
+    // Set additional images preview
+    const additionalPreviews = ['', '', '']
+    if (product.additional_images && Array.isArray(product.additional_images)) {
+      product.additional_images.forEach((img, index) => {
+        if (index < 3) {
+          additionalPreviews[index] = getFullImageUrl(img)
+        }
+      })
+    }
+    
     setImagePreview({
-      main: existingImages[0] ? getFullImageUrl(existingImages[0]) : '',
-      additional: [
-        existingImages[1] ? getFullImageUrl(existingImages[1]) : '',
-        existingImages[2] ? getFullImageUrl(existingImages[2]) : '',
-        existingImages[3] ? getFullImageUrl(existingImages[3]) : ''
-      ]
+      main: mainImage,
+      additional: additionalPreviews
     })
     setImageFiles({ main: null, additional: [null, null, null] })
     setShowAddModal(true)
@@ -182,98 +209,127 @@ function ProductManagement() {
   }
 
   const uploadImage = async (file) => {
+    console.log('🖼️ uploadImage called with file:', file.name)
+    
     const formData = new FormData()
     formData.append('image', file)
     
-    const response = await fetch(`${API_BASE_URL}/api/admin/upload-image`, {
-      method: 'POST',
-      body: formData
-    })
-    
-    const data = await response.json()
-    if (data.success) {
-      return data.data.url
+    try {
+      console.log('📤 Sending to /api/upload-image')
+      const response = await fetch(`${API_BASE_URL}/api/upload-image`, {
+        method: 'POST',
+        body: formData
+      })
+      
+      console.log('✅ Upload response status:', response.status)
+      const data = await response.json()
+      console.log('📦 Upload response:', data)
+      
+      if (data.success && data.data && data.data.url) {
+        console.log('✅ Image uploaded successfully:', data.data.url)
+        return data.data.url
+      } else {
+        console.error('❌ Upload failed:', data.message || 'Unknown error')
+        throw new Error(data.message || 'Upload failed')
+      }
+    } catch (error) {
+      console.error('❌ Upload error:', error)
+      throw error
     }
-    throw new Error(data.error || 'Upload failed')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setUploading(true)
+    console.log('🚀 Form submit started')
     
     try {
-      let imageUrls = []
-      
-      // Helper function to extract relative path from full URL
-      const getRelativePath = (url) => {
-        if (!url) return ''
-        // If it's a full URL with the base URL, extract just the path
-        if (url.includes(API_BASE_URL)) {
-          return url.replace(API_BASE_URL, '')
-        }
-        // If it already starts with /, it's already relative
-        return url.startsWith('/') ? url : `/${url}`
-      }
-      
-      // Handle main image - either use existing preview or upload new
+      // Upload main image
+      let mainImageUrl = ''
       if (imageFiles.main) {
-        const mainImageUrl = await uploadImage(imageFiles.main)
-        imageUrls.push(mainImageUrl)
+        console.log('📸 Uploading main image...')
+        mainImageUrl = await uploadImage(imageFiles.main)
+        console.log('✅ Main image uploaded:', mainImageUrl)
       } else if (imagePreview.main && !imagePreview.main.startsWith('blob:')) {
-        // Keep existing main image if not uploading a new one
-        imageUrls.push(getRelativePath(imagePreview.main))
+        if (imagePreview.main.includes(API_BASE_URL)) {
+          mainImageUrl = imagePreview.main.substring(API_BASE_URL.length)
+        } else {
+          mainImageUrl = imagePreview.main
+        }
+        console.log('♻️ Using existing main image:', mainImageUrl)
       }
       
-      // Handle additional images - only include non-empty previews
+      // Upload additional images
+      const additionalImageUrls = []
       for (let i = 0; i < imageFiles.additional.length; i++) {
-        if (imageFiles.additional[i]) {
-          const additionalImageUrl = await uploadImage(imageFiles.additional[i])
-          imageUrls.push(additionalImageUrl)
-        } else if (imagePreview.additional[i] && imagePreview.additional[i].trim() !== '') {
-          // Keep existing additional image if not uploading a new one and preview isn't empty
-          imageUrls.push(getRelativePath(imagePreview.additional[i]))
+        const file = imageFiles.additional[i]
+        if (file) {
+          console.log(`📸 Uploading additional image ${i + 1}...`)
+          const url = await uploadImage(file)
+          additionalImageUrls.push(url)
+          console.log(`✅ Additional image ${i + 1} uploaded:`, url)
+        } else if (imagePreview.additional[i] && !imagePreview.additional[i].startsWith('blob:')) {
+          // Keep existing additional image
+          let url = imagePreview.additional[i]
+          if (url.includes(API_BASE_URL)) {
+            url = url.substring(API_BASE_URL.length)
+          }
+          additionalImageUrls.push(url)
         }
       }
       
       const productData = {
         ...formData,
-        images: imageUrls
+        image: mainImageUrl,
+        additional_images: additionalImageUrls
       }
+      
+      console.log('📤 Product data ready:', productData)
       
       let response
       if (editingProduct) {
-        response = await fetch(`${API_BASE_URL}/api/admin/products/${editingProduct.id}`, {
+        console.log(`🔄 PUT request to: /api/products/${editingProduct.id}`)
+        response = await fetch(`${API_BASE_URL}/api/products/${editingProduct.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productData)
         })
       } else {
-        response = await fetch(`${API_BASE_URL}/api/admin/products`, {
+        console.log(`➕ POST request to: /api/products`)
+        response = await fetch(`${API_BASE_URL}/api/products`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(productData)
         })
       }
       
+      console.log('✅ Response received:', response.status)
       const data = await response.json()
-      if (data.success) {
-        handleCloseModal() // Use the new cleanup function
-        fetchProducts() // Refresh products list
+      console.log('📦 Response data:', data)
+      
+      if (data.success || response.ok) {
+        console.log('✅ Save successful')
+        alert(editingProduct ? 'Product updated successfully!' : 'Product created successfully!')
+        handleCloseModal()
+        console.log('🔄 Refetching products...')
+        setTimeout(() => fetchProducts(), 300)
       } else {
-        alert(data.error || 'Failed to save product')
+        console.error('❌ API error:', data)
+        alert(data.message || 'Failed to save product')
       }
     } catch (error) {
-      console.error('Error saving product:', error)
+      console.error('❌ Catch error:', error)
       alert('Error saving product: ' + error.message)
     } finally {
       setUploading(false)
+      console.log('✅ Form submit ended')
     }
   }
 
   const handleDeleteProduct = async (productId) => {
     if (confirm('Are you sure you want to delete this product?')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/products/${productId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
           method: 'DELETE'
         })
         const data = await response.json()
@@ -388,10 +444,12 @@ function ProductManagement() {
                       <div className="h-12 w-12 flex-shrink-0">
                         <img 
                           className="h-12 w-12 rounded-lg object-cover" 
-                          src={`${API_BASE_URL}${product.images && product.images[0] ? product.images[0] : '/uploads/images/placeholder.png'}`}
+                          src={product.image 
+                            ? (product.image.startsWith('http') ? product.image : `${API_BASE_URL}${product.image.startsWith('/') ? product.image : '/' + product.image}`)
+                            : `${API_BASE_URL}/uploads/images/placeholder.png`}
                           alt={product.name}
                           onError={(e) => {
-                            e.target.src = '/uploads/images/placeholder.png'
+                            e.target.src = `${API_BASE_URL}/uploads/images/placeholder.png`
                           }}
                         />
                       </div>

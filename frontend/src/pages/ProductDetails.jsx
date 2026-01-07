@@ -21,7 +21,7 @@ function ProductDetails() {
 
   const fetchProductDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/products`)
+      const response = await fetch(`${API_BASE_URL}/api/products`)
       const data = await response.json()
       if (data.success) {
         const foundProduct = data.data.find(p => p.slug === slug)
@@ -57,17 +57,27 @@ function ProductDetails() {
 
   const getFullImageUrl = (imgPath) => {
     if (!imgPath) return `${API_BASE_URL}/uploads/images/placeholder.png`
-    // If already has base URL, return as-is
-    if (imgPath.includes(API_BASE_URL)) return imgPath
-    // If it's a relative path, add base URL prefix
+    if (imgPath.startsWith('http')) return imgPath
     if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-    // If it's just a filename, add /uploads/images/ prefix
     return `${API_BASE_URL}/uploads/images/${imgPath}`
   }
 
-  const productImages = product.images && product.images.length > 0 
-    ? product.images.map(img => getFullImageUrl(img))
-    : [`${API_BASE_URL}/uploads/images/placeholder.png`]
+  // Build array of all images (main + additional)
+  const productImages = []
+  if (product.image) {
+    productImages.push(getFullImageUrl(product.image))
+  }
+  if (product.additional_images && Array.isArray(product.additional_images)) {
+    product.additional_images.forEach(img => {
+      if (img) {
+        productImages.push(getFullImageUrl(img))
+      }
+    })
+  }
+  // Fallback to placeholder if no images
+  if (productImages.length === 0) {
+    productImages.push(`${API_BASE_URL}/uploads/images/placeholder.png`)
+  }
 
   const handleQuantityChange = (delta) => {
     const newQuantity = Math.max(1, quantity + delta)
@@ -251,7 +261,7 @@ function ProductDetails() {
         
 
         {/* Customer Reviews */}
-        <Reviews productId={product.id} slug={slug} />
+        <Reviews productId={product.id} slug={slug} productName={product.name} />
 
         {/* Frequently Bought Together */}
         <section className="py-8 sm:py-12 md:py-16 bg-background-light">
@@ -273,11 +283,11 @@ function ProductDetails() {
                     <img 
                       alt={relatedProduct.short_description || relatedProduct.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      src={relatedProduct.images && relatedProduct.images[0] 
-                        ? `${API_BASE_URL}${relatedProduct.images[0]}` 
+                      src={relatedProduct.image 
+                        ? getFullImageUrl(relatedProduct.image)
                         : `${API_BASE_URL}/uploads/images/placeholder.png`}
                       onError={(e) => {
-                        e.target.src = `/uploads/images/placeholder.png`
+                        e.target.src = `${API_BASE_URL}/uploads/images/placeholder.png`
                       }}
                     />
                   </div>

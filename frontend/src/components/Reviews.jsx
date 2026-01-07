@@ -4,7 +4,7 @@ const API_BASE_URL = window.location.hostname === 'localhost'
   ? "http://localhost:8000" 
   : window.location.origin + '/backend';
 
-function Reviews({ productId, slug }) {
+function Reviews({ productId, slug, productName }) {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -24,10 +24,12 @@ function Reviews({ productId, slug }) {
 
   const fetchReviews = async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/reviews/${productId}`)
+      const response = await fetch(`${API_BASE_URL}/api/reviews?product_id=${productId}`)
       const data = await response.json()
       if (data.success) {
-        setReviews(data.data)
+        // Filter only approved reviews for public display
+        const approvedReviews = data.data.filter(review => review.status === 'approved')
+        setReviews(approvedReviews)
       }
     } catch (error) {
       console.error('Error fetching reviews:', error)
@@ -135,10 +137,10 @@ function Reviews({ productId, slug }) {
             <h2 className="text-xl md:text-2xl font-bold text-[#111518]">Customer Reviews</h2>
             {!loading && (
               <div className="flex items-center gap-2 mt-2">
-                <div className="flex text-golden-yellow">
+                <div className="flex text-golden-yellow text-xl">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} className="material-symbols-outlined fill-1">
-                      {i < Math.floor(calculateAverageRating()) ? 'star' : i < calculateAverageRating() ? 'star_half' : 'star'}
+                    <span key={i}>
+                      {i < Math.floor(calculateAverageRating()) ? '★' : i < calculateAverageRating() ? '⯨' : '☆'}
                     </span>
                   ))}
                 </div>
@@ -168,27 +170,9 @@ function Reviews({ productId, slug }) {
           </div>
         ) : reviews.length > 0 ? (
           <div className="reviews-wrapper mb-8">
-            <div className="auto-scroll-container">
+            <div className="flex gap-6 overflow-x-auto pb-4">
               {reviews.map((review) => (
                 <div key={review.id} className="bg-white p-3 sm:p-4 rounded-lg border border-neutral-grey/10 shadow-sm hover:shadow-md transition-shadow flex-shrink-0 w-80">
-                  <div className="flex items-center gap-1 text-golden-yellow mb-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <span key={i} className="material-symbols-outlined text-sm fill-1">
-                        {i < review.rating ? 'star' : 'star'}
-                      </span>
-                    ))}
-                  </div>
-                  <h4 className="font-bold text-[#111518] mb-2">{review.title || 'Review'}</h4>
-                  <p className="text-neutral-grey text-sm mb-4 line-clamp-3">"{review.comment}"</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-clay-brown">{review.customer_name}</span>
-                    <span className="text-xs text-neutral-grey">Verified Buyer</span>
-                  </div>
-                </div>
-              ))}
-              {/* Duplicate reviews for seamless loop */}
-              {reviews.map((review) => (
-                <div key={`duplicate-${review.id}`} className="bg-white p-3 sm:p-4 rounded-lg border border-neutral-grey/10 shadow-sm hover:shadow-md transition-shadow flex-shrink-0 w-80">
                   <div className="flex items-center gap-1 text-golden-yellow mb-3">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <span key={i} className="material-symbols-outlined text-sm fill-1">
@@ -215,7 +199,10 @@ function Reviews({ productId, slug }) {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold">Share Your Experience</h2>
+                <div>
+                  <h2 className="text-xl font-bold">Share Your Experience</h2>
+                  <p className="text-sm text-gray-600 mt-1">Writing review for: <span className="font-semibold text-moringa-green">{productName}</span></p>
+                </div>
                 <button
                   onClick={() => setShowForm(false)}
                   className="text-gray-500 hover:text-gray-700 text-2xl"

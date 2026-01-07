@@ -1,58 +1,92 @@
-# Yatha Backend
+# Yatha Backend - PHP API
 
-PHP REST API for Yatha application.
+## Setup Instructions
 
-## Quick Start
-
-1. Configure database in `config/database.php`
-
-2. Import database schema:
-```bash
-mysql -u root -p yatha_db < database/schema.sql
+### 1. Create Database
+```sql
+CREATE DATABASE yatha_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-3. Start PHP server:
+### 2. Import Migrations
 ```bash
-php -S localhost:8000 -t .
+mysql -u root yatha_db < database/migrations/create_tables.sql
 ```
+
+### 3. Environment Setup
+Copy `.env.example` to `.env` and update with your database credentials:
+```bash
+cp .env.example .env
+```
+
+### 4. Seed Database (Optional)
+```bash
+php database/seeds/seed_database.php
+```
+
+### 5. Start Development Server
+```bash
+cd public
+php -S localhost:8000
+```
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+
+### Products
+- `GET /api/products` - Get all products
+- `POST /api/products` - Create product (requires auth)
+
+### Reviews
+- `GET /api/reviews?product_id=1` - Get reviews for product
+- `POST /api/reviews` - Create review (requires auth)
+
+### Orders
+- `GET /api/orders` - Get user orders (requires auth)
+- `POST /api/orders` - Create order (requires auth)
+
+### Users
+- `GET /api/users` - Get user profile (requires auth)
+- `PUT /api/users` - Update user profile (requires auth)
 
 ## Project Structure
 
 ```
 backend/
-├── config/          # Configuration files
-│   └── database.php # Database connection
-├── routes/          # API routes
-│   └── api.php      # Route definitions
-├── utils/           # Utility classes
-│   └── Response.php # Response helper
-├── database/        # Database files
-│   └── schema.sql   # Database schema
-└── index.php        # Entry point
+├── public/
+│   ├── index.php           # Main router
+│   ├── .htaccess           # URL rewriting
+│   └── uploads/
+│       └── images/         # Product images
+├── src/
+│   ├── config/
+│   │   └── Database.php    # Database connection
+│   ├── controllers/        # Business logic
+│   ├── middleware/
+│   │   └── AuthMiddleware.php
+│   ├── models/             # Data models
+│   ├── routes/             # API route handlers
+│   │   ├── auth.php
+│   │   ├── products.php
+│   │   ├── reviews.php
+│   │   ├── orders.php
+│   │   └── users.php
+│   └── utils/
+│       ├── JWT.php         # JWT token handling
+│       └── Response.php    # Response formatting
+└── database/
+    ├── migrations/         # Database schemas
+    └── seeds/              # Sample data
 ```
 
-## API Endpoints
+## Requirements
+- PHP 7.4+
+- MySQL 5.7+
+- Apache with mod_rewrite enabled
 
-- `GET /` - API welcome message
-- `GET /api/test` - Test endpoint
-
-## Database Configuration
-
-Edit `config/database.php` to set your MySQL credentials:
-```php
-private $host = 'localhost';
-private $db_name = 'yatha_db';
-private $username = 'root';
-private $password = '';
-```
-
-## Adding New Routes
-
-Add routes in `routes/api.php`:
-```php
-case '/api/your-route':
-    if ($method === 'GET') {
-        Response::success(['data' => 'value']);
-    }
-    break;
-```
+## Notes
+- Change JWT_SECRET in production
+- Update database credentials in .env
+- Ensure uploads/images directory has write permissions
