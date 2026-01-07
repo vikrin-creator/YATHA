@@ -8,8 +8,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-header('Content-Type: application/json');
-
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../routes/admin_api.php';
 require_once __DIR__ . '/../routes/reviews_api.php';
@@ -24,6 +22,16 @@ $path = parse_url($requestUri, PHP_URL_PATH);
 // Strip /backend/api prefix
 $path = preg_replace('#^/backend/api#', '', $path);
 
+// Handle image upload first (before setting JSON header)
+if ($path === '/admin/upload-image' && $requestMethod === 'POST') {
+    header('Content-Type: application/json');
+    handleImageUpload();
+    exit();
+}
+
+// Set JSON header for other routes
+header('Content-Type: application/json');
+
 // Initialize database connection
 $db = Database::getInstance()->getConnection();
 
@@ -36,11 +44,6 @@ if (strpos($path, '/auth') === 0) {
 // Admin routes
 if (strpos($path, '/admin/products') === 0) {
     handleProductsRequest($requestMethod, $path, $db);
-    exit();
-}
-
-if ($path === '/admin/upload-image' && $requestMethod === 'POST') {
-    handleImageUpload();
     exit();
 }
 

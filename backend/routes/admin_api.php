@@ -258,7 +258,7 @@ function handleImageUpload() {
             'success' => true,
             'data' => [
                 'filename' => $filename,
-                'url' => '/uploads/images/' . $filename,
+                'url' => '/backend/uploads/images/' . $filename,
                 'size' => $uploadedFile['size']
             ],
             'message' => 'Image uploaded successfully'
