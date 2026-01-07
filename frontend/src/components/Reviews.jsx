@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
 
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? "http://localhost:8000" 
+  : "https://tan-goshawk-974791.hostingersite.com";
+
 function Reviews({ productId, slug }) {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
