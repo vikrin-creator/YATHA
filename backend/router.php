@@ -33,13 +33,22 @@ if ($request_path === '/') {
     exit;
 }
 
-// Check if requesting a real file or directory in public folder
-$public_file_path = __DIR__ . '/public' . $request_path;
+// Check if requesting a real file or directory
+// Handle both /public/... and /uploads/... paths
+if (strpos($request_path, '/public/') === 0) {
+    // Remove /public prefix since we're already checking in the public folder
+    $file_path = __DIR__ . $request_path;
+} else if (strpos($request_path, '/uploads/') === 0) {
+    // Legacy path without /public prefix
+    $file_path = __DIR__ . '/public' . $request_path;
+} else {
+    $file_path = __DIR__ . $request_path;
+}
 
 // If file exists and is a real file, serve it directly
-if (is_file($public_file_path)) {
+if (is_file($file_path)) {
     // For images and other static files
-    $ext = pathinfo($public_file_path, PATHINFO_EXTENSION);
+    $ext = pathinfo($file_path, PATHINFO_EXTENSION);
     $mime_types = [
         'jpg' => 'image/jpeg',
         'jpeg' => 'image/jpeg',
@@ -54,7 +63,7 @@ if (is_file($public_file_path)) {
         header('Content-Type: ' . $mime_types[strtolower($ext)]);
     }
     
-    readfile($public_file_path);
+    readfile($file_path);
     exit;
 }
 
