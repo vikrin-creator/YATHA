@@ -19,8 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 // Get request path
 $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$request_path = preg_replace('/^\/api/', '', $request_path);
+
+// Log for debugging
+error_log("Original REQUEST_URI: " . $_SERVER['REQUEST_URI']);
+error_log("Parsed path: " . $request_path);
+
+// Remove /backend/api, /backend, or /api from the path
+$request_path = preg_replace('#^/backend/api/#', '', $request_path);
+$request_path = preg_replace('#^/backend/#', '', $request_path);
+$request_path = preg_replace('#^/api/#', '', $request_path);
 $request_path = trim($request_path, '/');
+
+error_log("Final path after cleanup: " . $request_path);
 
 // If empty path, show API info
 if (empty($request_path)) {
