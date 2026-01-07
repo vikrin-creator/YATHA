@@ -1,0 +1,15 @@
+RewriteEngine On
+
+# Allow access to public folder for static files
+RewriteCond %{REQUEST_URI} ^/backend/public/
+RewriteRule ^ - [L]
+
+# Route all API requests through index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+# Set CORS headers
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization"
