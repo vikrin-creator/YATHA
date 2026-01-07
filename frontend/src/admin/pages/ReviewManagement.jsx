@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 function ReviewManagement() {
   const API_BASE_URL = window.location.hostname === 'localhost' 
     ? "http://localhost:8000" 
-    : "https://tan-goshawk-974791.hostingersite.com";
+    : "https://tan-goshawk-974791.hostingersite.com/backend";
 
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
