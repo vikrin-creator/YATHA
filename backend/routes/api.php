@@ -8,18 +8,21 @@ function handleRequest($method, $uri) {
     // Remove base path if needed
     $path = parse_url($uri, PHP_URL_PATH);
     
+    // Strip /backend prefix if present (for production deployment)
+    $path = preg_replace('#^/backend#', '', $path);
+    
     // Initialize database connection
     $db = Database::getInstance()->getConnection();
     
     // Auth routes
     if (strpos($path, '/api/auth') === 0) {
-        handleAuthRequest($method, $uri, $db);
+        handleAuthRequest($method, $path, $db);
         return;
     }
     
     // Admin routes
     if (strpos($path, '/api/admin/products') === 0) {
-        handleProductsRequest($method, $uri, $db);
+        handleProductsRequest($method, $path, $db);
         return;
     }
     
@@ -30,12 +33,12 @@ function handleRequest($method, $uri) {
     
     // Review routes
     if (strpos($path, '/api/admin/reviews') === 0) {
-        handleReviewsRequest($method, $uri, $db);
+        handleReviewsRequest($method, $path, $db);
         return;
     }
     
     if (strpos($path, '/api/reviews') === 0) {
-        handleReviewsRequest($method, $uri, $db);
+        handleReviewsRequest($method, $path, $db);
         return;
     }
     
