@@ -19,8 +19,9 @@ $requestMethod = $_SERVER['REQUEST_METHOD'];
 // Remove query string and get the path
 $path = parse_url($requestUri, PHP_URL_PATH);
 
-// Strip /backend/api prefix
+// Strip /backend/api or /api prefix
 $path = preg_replace('#^/backend/api#', '', $path);
+$path = preg_replace('#^/api#', '', $path);
 
 // Handle image upload first (before setting JSON header)
 if ($path === '/admin/upload-image' && $requestMethod === 'POST') {
