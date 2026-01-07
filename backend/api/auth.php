@@ -12,7 +12,13 @@ $db = $database->connect();
 
 // Get action from URL
 $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$request_path = preg_replace('/^\/api/', '', $request_path);
+
+// Remove /backend/api, /backend, or /api from the path
+$request_path = preg_replace('#^/backend/api/#', '', $request_path);
+$request_path = preg_replace('#^/backend/#', '', $request_path);
+$request_path = preg_replace('#^/api/#', '', $request_path);
+$request_path = trim($request_path, '/');
+
 $segments = array_values(array_filter(explode('/', $request_path)));
 $action = $segments[1] ?? '';
 
