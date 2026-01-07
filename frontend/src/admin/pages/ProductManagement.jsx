@@ -391,7 +391,7 @@ function ProductManagement() {
                           src={`${API_BASE_URL}${product.images && product.images[0] ? product.images[0] : '/uploads/images/placeholder.png'}`}
                           alt={product.name}
                           onError={(e) => {
-                            e.target.src = '/images/placeholder.png'
+                            e.target.src = '/uploads/images/placeholder.png'
                           }}
                         />
                       </div>

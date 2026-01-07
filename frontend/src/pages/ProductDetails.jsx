@@ -56,13 +56,13 @@ function ProductDetails() {
   }
 
   const getFullImageUrl = (imgPath) => {
-    if (!imgPath) return `${API_BASE_URL}/images/placeholder.png`
+    if (!imgPath) return `${API_BASE_URL}/uploads/images/placeholder.png`
     // If already has base URL, return as-is
     if (imgPath.includes(API_BASE_URL)) return imgPath
     // If it's a relative path, add base URL prefix
     if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-    // If it's just a filename, add /images/ prefix
-    return `${API_BASE_URL}/images/${imgPath}`
+    // If it's just a filename, add /uploads/images/ prefix
+    return `${API_BASE_URL}/uploads/images/${imgPath}`
   }
 
   const productImages = product.images && product.images.length > 0 

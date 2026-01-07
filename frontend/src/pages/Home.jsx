@@ -31,13 +31,13 @@ function Home() {
   }
 
   const getFullImageUrl = (imgPath) => {
-    if (!imgPath) return '/images/placeholder.png'
+    if (!imgPath) return '/uploads/images/placeholder.png'
     // If already has base URL, return as-is
     if (imgPath.includes(API_BASE_URL)) return imgPath
     // If it's a relative path, add base URL prefix
     if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-    // If it's just a filename, add /images/ prefix
-    return `${API_BASE_URL}/images/${imgPath}`
+    // If it's just a filename, add /uploads/images/ prefix
+    return `${API_BASE_URL}/uploads/images/${imgPath}`
   }
 
   return (
