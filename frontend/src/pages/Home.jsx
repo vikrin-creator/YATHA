@@ -1,10 +1,45 @@
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import HeroImage from '../assets/images/HeroSection.png'
-import MoringaImage from '../assets/images/MoringaPowder.png'
-import BeetrootImage from '../assets/images/BeetrootPowder.png'
-import ABCImage from '../assets/images/ABC Powder.png'
-import TurmericImage from '../assets/images/TurmericPowder.png'
 
 function Home() {
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? "http://localhost:8000" 
+    : "https://tan-goshawk-974791.hostingersite.com";
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/products`)
+      const data = await response.json()
+      if (data.success) {
+        // Filter featured products or take first 4
+        const featuredProducts = data.data.filter(product => product.featured).slice(0, 4)
+        setProducts(featuredProducts.length > 0 ? featuredProducts : data.data.slice(0, 4))
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getFullImageUrl = (imgPath) => {
+    if (!imgPath) return '/images/placeholder.png'
+    // If already has base URL, return as-is
+    if (imgPath.includes(API_BASE_URL)) return imgPath
+    // If it's a relative path, add base URL prefix
+    if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
+    // If it's just a filename, add /images/ prefix
+    return `${API_BASE_URL}/images/${imgPath}`
+  }
+
   return (
     <div>
       {/* Hero Section */}
@@ -77,48 +112,62 @@ function Home() {
       <section className="py-12 sm:py-16 lg:py-24">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
           <h2 className="text-center text-2xl sm:text-3xl md:text-4xl font-bold text-clay-brown tracking-tight">Shop All Products</h2>
-          <div className="mt-8 sm:mt-10 md:mt-12 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            <div className="flex flex-col gap-3 group text-center">
-              <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-200">
-                <img
-                  alt="Moringa powder in a wooden bowl surrounded by fresh moringa leaves."
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  src={MoringaImage}
-                />
-              </div>
-              <h3 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-[#111518]">Moringa Powder</h3>
+          
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-moringa-green"></div>
             </div>
-            <div className="flex flex-col gap-3 group text-center">
-              <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-200">
-                <img
-                  alt="Vibrant red beetroot powder in a ceramic spoon with fresh beetroot slices nearby."
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  src={BeetrootImage}
-                />
-              </div>
-              <h3 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-[#111518]">Beetroot Powder</h3>
+          ) : (
+            <div className="mt-8 sm:mt-10 md:mt-12 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+              {products.map((product) => (
+                <Link 
+                  key={product.id}
+                  to={`/product/${product.slug}`} 
+                  className="flex flex-col gap-3 group text-center"
+                >
+                  <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-200 relative">
+                    {product.status === 'active' && product.stock_quantity < 20 && (
+                      <span className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 text-xs font-bold rounded text-clay-brown z-10">
+                        Low Stock
+                      </span>
+                    )}
+                    <img
+                      alt={product.short_description || product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      src={product.images && product.images[0] 
+                        ? getFullImageUrl(product.images[0])
+                        : `${API_BASE_URL}/images/placeholder.png`}
+                      onError={(e) => {
+                        // Show placeholder div if image fails to load
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm" style={{display: 'none'}}>
+                      No Image
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-[#111518]">{product.name}</h3>
+                    {product.price && (
+                      <div className="mt-2 flex items-center justify-center gap-2">
+                        <span className="text-lg font-bold text-moringa-green">${product.price}</span>
+                        {product.original_price && product.original_price > product.price && (
+                          <span className="text-sm text-gray-500 line-through">${product.original_price}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
             </div>
-            <div className="flex flex-col gap-3 group text-center">
-              <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-200">
-                <img
-                  alt="A colorful mix of powders representing Apple, Beetroot, and Carrot (ABC) powder."
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  src={ABCImage}
-                />
-              </div>
-              <h3 className="mt-4 text-xl font-bold text-[#111518]">ABC Powder</h3>
+          )}
+          
+          {!loading && products.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No products available at the moment.</p>
             </div>
-            <div className="flex flex-col gap-3 group text-center">
-              <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-200">
-                <img
-                  alt="Bright yellow turmeric powder on a dark surface with fresh turmeric root."
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  src={TurmericImage}
-                />
-              </div>
-              <h3 className="mt-4 text-xl font-bold text-[#111518]">Turmeric Powder</h3>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 

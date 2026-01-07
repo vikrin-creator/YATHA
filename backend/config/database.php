@@ -1,10 +1,10 @@
 <?php
 
 class Database {
-    private $host = 'localhost';
-    private $db_name = 'yatha_db';
-    private $username = 'root';
-    private $password = '';
+    private $host = 'srv2124.hstgr.io';
+    private $db_name = 'u177524058_YATHA';
+    private $username = 'u177524058_YATHA';
+    private $password = 'Yatha@2025';
     private $conn = null;
 
     public function getConnection() {

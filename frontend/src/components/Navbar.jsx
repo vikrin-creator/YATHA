@@ -52,9 +52,9 @@ function Navbar() {
               <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-neutral-grey/80">search</span>
             </label>
             <div className="flex gap-2">
-              <button className="hidden sm:flex items-center justify-center rounded-full h-10 w-10 bg-white/50 text-[#111518] hover:bg-neutral-grey/10">
+              <Link to="/auth" className="hidden sm:flex items-center justify-center rounded-full h-10 w-10 bg-white/50 text-[#111518] hover:bg-neutral-grey/10">
                 <span className="material-symbols-outlined">person</span>
-              </button>
+              </Link>
               <button className="flex items-center justify-center rounded-full h-10 w-10 bg-white/50 text-[#111518] hover:bg-neutral-grey/10">
                 <span className="material-symbols-outlined">shopping_bag</span>
               </button>
