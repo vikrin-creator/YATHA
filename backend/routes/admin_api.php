@@ -243,7 +243,14 @@ function handleImageUpload() {
     // Generate unique filename
     $extension = pathinfo($uploadedFile['name'], PATHINFO_EXTENSION);
     $filename = uniqid() . '_' . time() . '.' . $extension;
-    $uploadPath = __DIR__ . '/../uploads/images/' . $filename;
+    
+    // Ensure uploads directory exists
+    $uploadDir = __DIR__ . '/../uploads/images/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    $uploadPath = $uploadDir . $filename;
 
     // Move uploaded file
     if (move_uploaded_file($uploadedFile['tmp_name'], $uploadPath)) {
@@ -258,7 +265,7 @@ function handleImageUpload() {
         ]);
     } else {
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Failed to upload image']);
+        echo json_encode(['success' => false, 'error' => 'Failed to upload image. Check directory permissions.']);
     }
 }
 
