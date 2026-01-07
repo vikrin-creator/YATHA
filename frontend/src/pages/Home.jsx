@@ -12,7 +12,7 @@ function Home() {
 
   const API_BASE_URL = window.location.hostname === 'localhost' 
     ? "http://localhost:8000" 
-    : "https://tan-goshawk-974791.hostingersite.com/backend";
+    : window.location.origin + '/backend';
 
   const fetchProducts = async () => {
     try {

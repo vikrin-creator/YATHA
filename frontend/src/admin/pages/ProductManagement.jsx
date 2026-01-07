@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 function ProductManagement() {
   const API_BASE_URL = window.location.hostname === 'localhost' 
     ? "http://localhost:8000" 
-    : "https://tan-goshawk-974791.hostingersite.com/backend";
+    : window.location.origin + '/backend';
 
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
