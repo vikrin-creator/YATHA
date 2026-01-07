@@ -56,10 +56,10 @@ function ProductDetails() {
   }
 
   const getFullImageUrl = (imgPath) => {
-    if (!imgPath) return `${API_BASE_URL}/uploads/images/placeholder.png`
+    if (!imgPath) return `${API_BASE_URL}/public/uploads/images/placeholder.png`
     if (imgPath.startsWith('http')) return imgPath
     if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-    return `${API_BASE_URL}/uploads/images/${imgPath}`
+    return `${API_BASE_URL}/public/uploads/images/${imgPath}`
   }
 
   // Build array of all images (main + additional)
@@ -76,7 +76,7 @@ function ProductDetails() {
   }
   // Fallback to placeholder if no images
   if (productImages.length === 0) {
-    productImages.push(`${API_BASE_URL}/uploads/images/placeholder.png`)
+    productImages.push(`${API_BASE_URL}/public/uploads/images/placeholder.png`)
   }
 
   const handleQuantityChange = (delta) => {
@@ -285,9 +285,9 @@ function ProductDetails() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       src={relatedProduct.image 
                         ? getFullImageUrl(relatedProduct.image)
-                        : `${API_BASE_URL}/uploads/images/placeholder.png`}
+                        : `${API_BASE_URL}/public/uploads/images/placeholder.png`}
                       onError={(e) => {
-                        e.target.src = `${API_BASE_URL}/uploads/images/placeholder.png`
+                        e.target.src = `${API_BASE_URL}/public/uploads/images/placeholder.png`
                       }}
                     />
                   </div>

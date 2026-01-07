@@ -31,13 +31,13 @@ function Home() {
   }
 
   const getFullImageUrl = (imgPath) => {
-    if (!imgPath) return `${API_BASE_URL}/uploads/images/placeholder.png`
+    if (!imgPath) return `${API_BASE_URL}/public/uploads/images/placeholder.png`
     // If already has full URL, return as-is
     if (imgPath.startsWith('http')) return imgPath
-    // If it's an absolute path (starts with /), prepend base URL
+    // If it's an absolute path, prepend base URL
     if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
     // If it's just a filename, add full path
-    return `${API_BASE_URL}/uploads/images/${imgPath}`
+    return `${API_BASE_URL}/public/uploads/images/${imgPath}`
   }
 
   return (
@@ -136,7 +136,7 @@ function Home() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       src={product.image 
                         ? getFullImageUrl(product.image)
-                        : `${API_BASE_URL}/uploads/images/placeholder.png`}
+                        : `${API_BASE_URL}/public/uploads/images/placeholder.png`}
                       onError={(e) => {
                         // Show placeholder div if image fails to load
                         e.target.style.display = 'none';

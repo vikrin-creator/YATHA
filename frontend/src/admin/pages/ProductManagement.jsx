@@ -145,7 +145,7 @@ function ProductManagement() {
       if (!imgPath) return ''
       if (imgPath.startsWith('http')) return imgPath
       if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-      return `${API_BASE_URL}/uploads/images/${imgPath}`
+      return `${API_BASE_URL}/public/uploads/images/${imgPath}`
     }
     
     // Set main image preview
