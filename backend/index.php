@@ -11,6 +11,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Serve images from backend uploads folder when requested via /images/... URLs
 $requestUri = $_SERVER['REQUEST_URI'];
 $requestPath = strtok($requestUri, '?');
+
+// Strip /backend prefix if present
+$requestPath = preg_replace('#^/backend#', '', $requestPath);
+
 if (strpos($requestPath, '/images/') === 0) {
     // Map to backend uploads folder and decode URL
     $relativePath = urldecode(substr($requestPath, strlen('/images/')));
