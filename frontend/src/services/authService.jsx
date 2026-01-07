@@ -1,4 +1,4 @@
-import apiClient from './api.jsx';
+import apiClient from './api';
 
 /**
  * Authentication Service
