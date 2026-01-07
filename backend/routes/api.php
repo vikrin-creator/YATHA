@@ -9,8 +9,7 @@ function handleRequest($method, $uri) {
     $path = parse_url($uri, PHP_URL_PATH);
     
     // Initialize database connection
-    $database = new Database();
-    $db = $database->getConnection();
+    $db = Database::getInstance()->getConnection();
     
     // Auth routes
     if (strpos($path, '/api/auth') === 0) {
