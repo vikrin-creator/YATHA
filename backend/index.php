@@ -1,4 +1,8 @@
 <?php
+// Debug logging
+error_log("REQUEST_URI: " . $_SERVER['REQUEST_URI']);
+error_log("REQUEST_METHOD: " . $_SERVER['REQUEST_METHOD']);
+
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
