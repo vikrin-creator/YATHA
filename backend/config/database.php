@@ -2,14 +2,17 @@
 
 class Database {
     private static $instance = null;
-    private $host = 'localhost';
-    private $db_name = 'u177524058_YATHA';
-    private $username = 'u177524058_YATHA';
-    private $password = 'Yatha@2025';
-    private $conn = null;
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
+    private $conn;
 
     private function __construct() {
-        // Constructor is private for singleton pattern
+        $this->host = getenv('DB_HOST') ?: 'localhost';
+        $this->db_name = getenv('DB_NAME') ?: 'u177524058_YATHA';
+        $this->username = getenv('DB_USER') ?: 'u177524058_YATHA';
+        $this->password = getenv('DB_PASSWORD') ?: 'Yatha@2025';
     }
 
     public static function getInstance() {
@@ -20,9 +23,7 @@ class Database {
     }
 
     public function getConnection() {
-        if ($this->conn !== null) {
-            return $this->conn;
-        }
+        $this->conn = null;
 
         try {
             $this->conn = new PDO(
@@ -35,14 +36,14 @@ class Database {
             $this->conn->exec("set names utf8");
         } catch(PDOException $e) {
             error_log("Connection error: " . $e->getMessage());
-            http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Database connection failed: ' . $e->getMessage()
-            ]);
-            exit();
+            throw new Exception("Database connection failed");
         }
 
         return $this->conn;
     }
+}
+
+// Helper function for backward compatibility
+function getDBConnection() {
+    return Database::getInstance()->getConnection();
 }
