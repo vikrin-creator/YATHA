@@ -67,7 +67,7 @@ function ProductDetails() {
 
   const productImages = product.images && product.images.length > 0 
     ? product.images.map(img => getFullImageUrl(img))
-    : [`${API_BASE_URL}/images/placeholder.png`]
+    : [`${API_BASE_URL}/uploads/images/placeholder.png`]
 
   const handleQuantityChange = (delta) => {
     const newQuantity = Math.max(1, quantity + delta)
@@ -275,9 +275,9 @@ function ProductDetails() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       src={relatedProduct.images && relatedProduct.images[0] 
                         ? `${API_BASE_URL}${relatedProduct.images[0]}` 
-                        : `${API_BASE_URL}/images/placeholder.png`}
+                        : `${API_BASE_URL}/uploads/images/placeholder.png`}
                       onError={(e) => {
-                        e.target.src = `/images/placeholder.png`
+                        e.target.src = `/uploads/images/placeholder.png`
                       }}
                     />
                   </div>

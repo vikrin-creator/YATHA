@@ -136,7 +136,7 @@ function Home() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       src={product.images && product.images[0] 
                         ? getFullImageUrl(product.images[0])
-                        : `${API_BASE_URL}/images/placeholder.png`}
+                        : `${API_BASE_URL}/uploads/images/placeholder.png`}
                       onError={(e) => {
                         // Show placeholder div if image fails to load
                         e.target.style.display = 'none';

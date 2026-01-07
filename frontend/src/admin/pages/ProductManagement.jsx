@@ -124,8 +124,8 @@ function ProductManagement() {
       if (imgPath.includes(API_BASE_URL)) return imgPath
       // If it's a relative path, add base URL prefix
       if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
-      // If it's just a filename, add /images/ prefix
-      return `${API_BASE_URL}/images/${imgPath}`
+      // If it's just a filename, add /uploads/images/ prefix
+      return `${API_BASE_URL}/uploads/images/${imgPath}`
     }
     
     // Set existing images for preview
@@ -388,7 +388,7 @@ function ProductManagement() {
                       <div className="h-12 w-12 flex-shrink-0">
                         <img 
                           className="h-12 w-12 rounded-lg object-cover" 
-                          src={`${API_BASE_URL}${product.images && product.images[0] ? product.images[0] : '/images/placeholder.png'}`}
+                          src={`${API_BASE_URL}${product.images && product.images[0] ? product.images[0] : '/uploads/images/placeholder.png'}`}
                           alt={product.name}
                           onError={(e) => {
                             e.target.src = '/images/placeholder.png'
