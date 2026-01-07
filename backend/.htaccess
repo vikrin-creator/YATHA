@@ -9,17 +9,13 @@ Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^(.*)$ $1 [R=200,L]
 
-# Allow access to public folder for static files
-RewriteCond %{REQUEST_URI} ^/backend/public/ [OR]
-RewriteCond %{REQUEST_URI} ^/public/
+# Allow direct access to files in public folder
+RewriteCond %{REQUEST_URI} ^/public/ [OR]
+RewriteCond %{REQUEST_URI} ^/backend/public/
 RewriteRule ^ - [L]
 
-# Route API requests through api/index.php
+# Route everything else through index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^api/(.*)$ api/index.php [QSA,L]
-
-# If accessing backend root, redirect to frontend
-RewriteCond %{REQUEST_URI} ^/backend/?$
-RewriteRule ^ / [R=301,L]
+RewriteRule ^(.*)$ index.php [QSA,L]
 
