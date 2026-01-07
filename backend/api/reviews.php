@@ -19,12 +19,19 @@ $review_id = end($path_parts) !== 'reviews' ? end($path_parts) : null;
 if ($method === 'GET') {
     getReviews($db);
 } elseif ($method === 'POST') {
-    $user = AuthMiddleware::verify();
-    createReview($db, $input, $user['user_id']);
+    // Optional authentication - allow guest reviews too
+    $user_id = null;
+    if (isset(getallheaders()['Authorization'])) {
+        $user = AuthMiddleware::verify();
+        $user_id = $user['user_id'];
+    }
+    createReview($db, $input, $user_id);
 } elseif ($method === 'PUT') {
-    updateReview($db, $input, $review_id);
+    $user = AuthMiddleware::verify();
+    updateReview($db, $input, $review_id, $user['user_id']);
 } elseif ($method === 'DELETE') {
-    deleteReview($db, $review_id);
+    $user = AuthMiddleware::verify();
+    deleteReview($db, $review_id, $user['user_id']);
 } else {
     Response::error('Method not allowed', 405);
 }
@@ -90,19 +97,26 @@ function createReview($db, $input, $user_id)
     }
 }
 
-function updateReview($db, $input, $review_id)
+function updateReview($db, $input, $review_id, $user_id)
 {
     if (!$review_id) {
         Response::error('Review ID is required', 400);
         return;
     }
 
-    // Check if review exists
-    $check = $db->prepare("SELECT id FROM reviews WHERE id = ?");
+    // Check if review exists and user owns it
+    $check = $db->prepare("SELECT id, user_id FROM reviews WHERE id = ?");
     $check->bind_param('i', $review_id);
     $check->execute();
-    if (!$check->get_result()->fetch_assoc()) {
+    $review = $check->get_result()->fetch_assoc();
+    
+    if (!$review) {
         Response::error('Review not found', 404);
+        return;
+    }
+    
+    if ($review['user_id'] !== $user_id) {
+        Response::error('Unauthorized to update this review', 403);
         return;
     }
 
@@ -152,10 +166,26 @@ function updateReview($db, $input, $review_id)
     }
 }
 
-function deleteReview($db, $review_id)
+function deleteReview($db, $review_id, $user_id)
 {
     if (!$review_id) {
         Response::error('Review ID is required', 400);
+        return;
+    }
+
+    // Check if review exists and user owns it
+    $check = $db->prepare("SELECT id, user_id FROM reviews WHERE id = ?");
+    $check->bind_param('i', $review_id);
+    $check->execute();
+    $review = $check->get_result()->fetch_assoc();
+    
+    if (!$review) {
+        Response::error('Review not found', 404);
+        return;
+    }
+    
+    if ($review['user_id'] !== $user_id) {
+        Response::error('Unauthorized to delete this review', 403);
         return;
     }
 

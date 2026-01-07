@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/auth.css";
 
 import bg from "../assets/images/LoginSigninBg.png";
@@ -9,6 +10,8 @@ const API_BASE_URL = window.location.hostname === 'localhost'
   : window.location.origin + '/backend';
 
 export default function AuthPage() {
+  const navigate = useNavigate();
+  
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -20,10 +23,9 @@ export default function AuthPage() {
   const [signupFirstName, setSignupFirstName] = useState("");
   const [signupLastName, setSignupLastName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
-  const [signupMobile, setSignupMobile] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
-  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState("");
@@ -32,6 +34,12 @@ export default function AuthPage() {
     e.preventDefault();
     setLoginError("");
     setLoginLoading(true);
+
+    if (!loginEmail || !loginPassword) {
+      setLoginError("Please enter email and password");
+      setLoginLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -47,13 +55,13 @@ export default function AuthPage() {
 
       const data = await response.json();
 
-      if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem("auth_token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        alert("Login successful!");
-        // Redirect to home page or dashboard
-        window.location.href = "/";
+      if (data.success && data.data?.token) {
+        // Store token and user data
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(data.data.user));
+        
+        // Redirect to home
+        navigate("/");
       } else {
         setLoginError(data.message || "Login failed");
       }
@@ -67,33 +75,47 @@ export default function AuthPage() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setSignupError("");
+
+    // Validation
+    if (!signupFirstName || !signupLastName || !signupEmail || !signupPassword || !signupConfirmPassword) {
+      setSignupError("Please fill in all fields");
+      return;
+    }
+
+    if (signupPassword !== signupConfirmPassword) {
+      setSignupError("Passwords do not match");
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      setSignupError("Password must be at least 6 characters");
+      return;
+    }
+
     setSignupLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          first_name: signupFirstName,
-          last_name: signupLastName,
+          name: `${signupFirstName} ${signupLastName}`,
           email: signupEmail,
-          mobile_number: signupMobile,
           password: signupPassword,
-          confirm_password: signupConfirmPassword,
         }),
       });
 
       const data = await response.json();
 
-      if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem("auth_token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        alert("Account created successfully!");
-        // Redirect to home page or dashboard
-        window.location.href = "/";
+      if (data.success && data.data?.token) {
+        // Store token and user data
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(data.data.user));
+        
+        // Redirect to home
+        navigate("/");
       } else {
         setSignupError(data.message || "Signup failed");
       }
@@ -223,13 +245,6 @@ export default function AuthPage() {
               placeholder="Email Address"
               value={signupEmail}
               onChange={(e) => setSignupEmail(e.target.value)}
-              required
-            />
-            <input 
-              type="tel" 
-              placeholder="Mobile Number"
-              value={signupMobile}
-              onChange={(e) => setSignupMobile(e.target.value)}
               required
             />
             

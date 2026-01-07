@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../src/utils/Response.php';
+require_once __DIR__ . '/../src/utils/JWT.php';
+require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -17,13 +19,33 @@ $product_id = end($path_parts) !== 'products' ? end($path_parts) : null;
 if ($method === 'GET') {
     getProducts($db, $product_id);
 } elseif ($method === 'POST') {
+    $user = AuthMiddleware::verify();
+    verifyAdmin($db, $user['user_id']);
     createProduct($db, $input);
 } elseif ($method === 'PUT') {
+    $user = AuthMiddleware::verify();
+    verifyAdmin($db, $user['user_id']);
     updateProduct($db, $input, $product_id);
 } elseif ($method === 'DELETE') {
+    $user = AuthMiddleware::verify();
+    verifyAdmin($db, $user['user_id']);
     deleteProduct($db, $product_id);
 } else {
     Response::error('Method not allowed', 405);
+}
+
+function verifyAdmin($db, $user_id)
+{
+    $query = "SELECT role FROM users WHERE id = ?";
+    $stmt = $db->prepare($query);
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    
+    if (!$user || $user['role'] !== 'admin') {
+        Response::error('Admin access required', 403);
+    }
 }
 
 function getProducts($db, $product_id = null)
