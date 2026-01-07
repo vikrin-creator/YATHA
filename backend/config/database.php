@@ -1,11 +1,28 @@
 <?php
 
 class Database {
-    private $host = 'srv2124.hstgr.io';
-    private $db_name = 'u177524058_YATHA';
-    private $username = 'u177524058_YATHA';
-    private $password = 'Yatha@2025';
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
     private $conn = null;
+
+    public function __construct() {
+        // Auto-detect environment based on server
+        if ($_SERVER['HTTP_HOST'] === 'localhost:5173' || $_SERVER['HTTP_HOST'] === 'localhost:3000' || $_SERVER['SERVER_NAME'] === 'localhost' || php_sapi_name() === 'cli-server') {
+            // Development environment
+            $this->host = 'localhost';
+            $this->db_name = 'yatha_db';
+            $this->username = 'root';
+            $this->password = '';
+        } else {
+            // Production environment (Hostinger)
+            $this->host = 'srv2124.hstgr.io';
+            $this->db_name = 'u177524058_YATHA';
+            $this->username = 'u177524058_YATHA';
+            $this->password = 'Yatha@2025';
+        }
+    }
 
     public function getConnection() {
         if ($this->conn === null) {
