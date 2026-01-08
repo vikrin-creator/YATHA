@@ -313,6 +313,24 @@ function Navbar() {
                             <span className="material-symbols-outlined text-lg">lock</span>
                             Change Password
                           </button>
+                          
+                          {/* Admin Panel Link - Only for Admin Users */}
+                          {user && user.role === 'admin' && (
+                            <>
+                              <div className="border-t border-neutral-grey/20 my-2"></div>
+                              <button 
+                                onClick={() => {
+                                  setIsUserMenuOpen(false)
+                                  navigate('/admin')
+                                }}
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary font-semibold hover:bg-primary/10 w-full"
+                              >
+                                <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+                                Admin Panel
+                              </button>
+                            </>
+                          )}
+                          
                           <div className="border-t border-neutral-grey/20 my-2"></div>
                           <button 
                             onClick={handleLogout}

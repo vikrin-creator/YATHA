@@ -16,8 +16,8 @@ $user = AuthMiddleware::verify();
 $database = new Database();
 $db = $database->connect();
 
-// Check if user is admin (you can add a role/is_admin column to users table later)
-// For now, we'll allow any authenticated user to view users
+// Verify user is admin
+verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
 
 if ($method === 'GET') {
     getAllUsers($db);
@@ -44,6 +44,28 @@ function getAllUsers($db)
         Response::success($users, 'Users retrieved successfully', 200);
     } catch (Exception $e) {
         Response::error('Error fetching users: ' . $e->getMessage(), 500);
+    }
+}
+
+function verifyAdmin($db, $user_id, $user_role = null)
+{
+    if ($user_role !== null && $user_role !== 'admin') {
+        Response::error('Admin access required', 403);
+    } elseif ($user_role === null) {
+        // Fallback: query database if role not provided via JWT
+        $query = "SELECT role FROM users WHERE id = ?";
+        $stmt = $db->prepare($query);
+        if (!$stmt) {
+            Response::error('Database error', 500);
+        }
+        $stmt->bind_param('i', $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+
+        if (!$user || $user['role'] !== 'admin') {
+            Response::error('Admin access required', 403);
+        }
     }
 }
 ?>

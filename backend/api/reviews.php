@@ -45,9 +45,11 @@ try {
         createReview($db, $input, $user_id);
     } elseif ($method === 'PUT') {
         $user = AuthMiddleware::verify();
+        verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
         updateReview($db, $input, $review_id, $user['user_id']);
     } elseif ($method === 'DELETE') {
         $user = AuthMiddleware::verify();
+        verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
         deleteReview($db, $review_id, $user['user_id']);
     } else {
         Response::error('Method not allowed', 405);
@@ -262,6 +264,28 @@ function deleteReview($db, $review_id, $user_id)
         }
     } else {
         Response::error('Failed to delete review', 500);
+    }
+}
+
+function verifyAdmin($db, $user_id, $user_role = null)
+{
+    if ($user_role !== null && $user_role !== 'admin') {
+        Response::error('Admin access required', 403);
+    } elseif ($user_role === null) {
+        // Fallback: query database if role not provided via JWT
+        $query = "SELECT role FROM users WHERE id = ?";
+        $stmt = $db->prepare($query);
+        if (!$stmt) {
+            Response::error('Database error', 500);
+        }
+        $stmt->bind_param('i', $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+
+        if (!$user || $user['role'] !== 'admin') {
+            Response::error('Admin access required', 403);
+        }
     }
 }
 ?>

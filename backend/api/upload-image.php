@@ -27,7 +27,7 @@ try {
         throw new Exception('Database connection failed');
     }
 
-    verifyAdmin($db, $user['user_id']);
+    verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
 
     // Check if file was uploaded
     if (!isset($_FILES['image'])) {
@@ -93,8 +93,17 @@ if (move_uploaded_file($file['tmp_name'], $filepath)) {
     Response::error($e->getMessage(), 500);
 }
 
-function verifyAdmin($db, $user_id)
+function verifyAdmin($db, $user_id, $user_role = null)
 {
+    // If role is passed from JWT token, check it directly
+    if ($user_role !== null) {
+        if ($user_role !== 'admin') {
+            Response::error('Admin access required', 403);
+        }
+        return;
+    }
+    
+    // Fallback: query database if role not provided
     $query = "SELECT role FROM users WHERE id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param('i', $user_id);

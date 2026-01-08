@@ -30,15 +30,15 @@ try {
         getProducts($db, $product_id);
     } elseif ($method === 'POST') {
         $user = AuthMiddleware::verify();
-        verifyAdmin($db, $user['user_id']);
+        verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
         createProduct($db, $input);
     } elseif ($method === 'PUT') {
         $user = AuthMiddleware::verify();
-        verifyAdmin($db, $user['user_id']);
+        verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
         updateProduct($db, $input, $product_id);
     } elseif ($method === 'DELETE') {
         $user = AuthMiddleware::verify();
-        verifyAdmin($db, $user['user_id']);
+        verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
         deleteProduct($db, $product_id);
     } else {
         Response::error('Method not allowed', 405);
@@ -47,8 +47,17 @@ try {
     Response::error($e->getMessage(), 500);
 }
 
-function verifyAdmin($db, $user_id)
+function verifyAdmin($db, $user_id, $user_role = null)
 {
+    // If role is passed from JWT token, check it directly
+    if ($user_role !== null) {
+        if ($user_role !== 'admin') {
+            Response::error('Admin access required', 403);
+        }
+        return;
+    }
+    
+    // Fallback: query database if role not provided
     $query = "SELECT role FROM users WHERE id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param('i', $user_id);

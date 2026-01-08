@@ -19,6 +19,7 @@ if ($row['count'] > 0) {
 
 // Seed users
 $users = [
+    ['Admin User', 'admin@gmail.com', 'password123'],
     ['John Doe', 'john@example.com', 'password123'],
     ['Jane Smith', 'jane@example.com', 'password123'],
     ['Bob Johnson', 'bob@example.com', 'password123']

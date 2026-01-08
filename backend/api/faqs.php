@@ -61,7 +61,7 @@ try {
             break;
 
         case 'POST':
-            // Create new FAQ - requires authentication
+            // Create new FAQ - requires admin
             $token = null;
             if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
                 preg_match('/Bearer\s+(.*)$/i', $_SERVER['HTTP_AUTHORIZATION'], $matches);
@@ -78,6 +78,9 @@ try {
             if (!$decoded) {
                 Response::error('Invalid or expired token', 401);
             }
+
+            // Verify admin role
+            verifyAdmin($db, $decoded->user_id, $decoded->role ?? null);
 
             // Get input data
             $data = json_decode(file_get_contents('php://input'), true);
@@ -105,7 +108,7 @@ try {
             break;
 
         case 'PUT':
-            // Update FAQ - requires authentication
+            // Update FAQ - requires admin
             if (!$faqId) {
                 Response::error('FAQ ID required', 400);
             }
@@ -126,6 +129,9 @@ try {
             if (!$decoded) {
                 Response::error('Invalid or expired token', 401);
             }
+
+            // Verify admin role
+            verifyAdmin($db, $decoded->user_id, $decoded->role ?? null);
 
             $data = json_decode(file_get_contents('php://input'), true);
             
@@ -208,6 +214,9 @@ try {
                 Response::error('Invalid or expired token', 401);
             }
 
+            // Verify admin role
+            verifyAdmin($db, $decoded->user_id, $decoded->role ?? null);
+
             // Check if FAQ exists
             $stmt = $db->prepare('SELECT id FROM faqs WHERE id = ?');
             $stmt->bind_param('i', $faqId);
@@ -233,5 +242,27 @@ try {
     }
 } catch (Exception $e) {
     Response::error($e->getMessage(), 500);
+}
+
+function verifyAdmin($db, $user_id, $user_role = null)
+{
+    if ($user_role !== null && $user_role !== 'admin') {
+        Response::error('Admin access required', 403);
+    } elseif ($user_role === null) {
+        // Fallback: query database if role not provided via JWT
+        $query = "SELECT role FROM users WHERE id = ?";
+        $stmt = $db->prepare($query);
+        if (!$stmt) {
+            Response::error('Database error', 500);
+        }
+        $stmt->bind_param('i', $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+
+        if (!$user || $user['role'] !== 'admin') {
+            Response::error('Admin access required', 403);
+        }
+    }
 }
 ?>

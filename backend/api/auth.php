@@ -117,7 +117,7 @@ function handleLogin($db, $input)
     $email = trim($input['email']);
     $password = $input['password'];
 
-    $query = "SELECT id, password, name, phone FROM users WHERE email = ?";
+    $query = "SELECT id, password, name, phone, role FROM users WHERE email = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param('s', $email);
     $stmt->execute();
@@ -134,7 +134,11 @@ function handleLogin($db, $input)
     }
 
     $jwt = new JWT();
-    $token = $jwt->generateToken(['user_id' => $user['id'], 'email' => $email]);
+    $token = $jwt->generateToken([
+        'user_id' => $user['id'],
+        'email' => $user['email'],
+        'role' => $user['role']
+    ]);
 
     echo json_encode([
         'success' => true,
@@ -145,7 +149,8 @@ function handleLogin($db, $input)
                 'id' => $user['id'],
                 'name' => $user['name'],
                 'email' => $email,
-                'phone' => $user['phone']
+                'phone' => $user['phone'],
+                'role' => $user['role']
             ],
             'token' => $token
         ]
