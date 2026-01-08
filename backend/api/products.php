@@ -1,37 +1,50 @@
 <?php
 
+header('Content-Type: application/json');
+
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
 require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/utils/JWT.php';
 require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
-$input = json_decode(file_get_contents('php://input'), true);
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
+    $input = json_decode(file_get_contents('php://input'), true);
 
-$database = new Database();
-$db = $database->connect();
+    $database = new Database();
+    $db = $database->connect();
 
-// Get product ID from URL if available
-$request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$path_parts = array_filter(explode('/', $request_path));
-$product_id = end($path_parts) !== 'products' ? end($path_parts) : null;
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
 
-if ($method === 'GET') {
-    getProducts($db, $product_id);
-} elseif ($method === 'POST') {
-    $user = AuthMiddleware::verify();
-    verifyAdmin($db, $user['user_id']);
-    createProduct($db, $input);
-} elseif ($method === 'PUT') {
-    $user = AuthMiddleware::verify();
-    verifyAdmin($db, $user['user_id']);
-    updateProduct($db, $input, $product_id);
-} elseif ($method === 'DELETE') {
-    $user = AuthMiddleware::verify();
-    verifyAdmin($db, $user['user_id']);
-    deleteProduct($db, $product_id);
-} else {
-    Response::error('Method not allowed', 405);
+    // Get product ID from URL if available
+    $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $path_parts = array_filter(explode('/', $request_path));
+    $product_id = end($path_parts) !== 'products' ? end($path_parts) : null;
+
+    if ($method === 'GET') {
+        getProducts($db, $product_id);
+    } elseif ($method === 'POST') {
+        $user = AuthMiddleware::verify();
+        verifyAdmin($db, $user['user_id']);
+        createProduct($db, $input);
+    } elseif ($method === 'PUT') {
+        $user = AuthMiddleware::verify();
+        verifyAdmin($db, $user['user_id']);
+        updateProduct($db, $input, $product_id);
+    } elseif ($method === 'DELETE') {
+        $user = AuthMiddleware::verify();
+        verifyAdmin($db, $user['user_id']);
+        deleteProduct($db, $product_id);
+    } else {
+        Response::error('Method not allowed', 405);
+    }
+} catch (Exception $e) {
+    Response::error($e->getMessage(), 500);
 }
 
 function verifyAdmin($db, $user_id)

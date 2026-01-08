@@ -1,22 +1,35 @@
 <?php
 
+header('Content-Type: application/json');
+
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
 require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
-$input = json_decode(file_get_contents('php://input'), true);
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
+    $input = json_decode(file_get_contents('php://input'), true);
 
-$user = AuthMiddleware::verify();
-$database = new Database();
-$db = $database->connect();
+    $user = AuthMiddleware::verify();
+    $database = new Database();
+    $db = $database->connect();
 
-if ($method === 'GET') {
-    getUserProfile($db, $user['user_id']);
-} elseif ($method === 'PUT') {
-    updateUserProfile($db, $input, $user['user_id']);
-} else {
-    Response::error('Method not allowed', 405);
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
+
+    if ($method === 'GET') {
+        getUserProfile($db, $user['user_id']);
+    } elseif ($method === 'PUT') {
+        updateUserProfile($db, $input, $user['user_id']);
+    } else {
+        Response::error('Method not allowed', 405);
+    }
+} catch (Exception $e) {
+    Response::error($e->getMessage(), 500);
 }
 
 function getUserProfile($db, $user_id)

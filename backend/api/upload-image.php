@@ -1,33 +1,41 @@
 <?php
 
+header('Content-Type: application/json');
+
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
 require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/utils/JWT.php';
 require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
-// Set JSON response header
-header('Content-Type: application/json');
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
 
-$method = $_SERVER['REQUEST_METHOD'];
+    if ($method !== 'POST') {
+        Response::error('Method not allowed', 405);
+        exit;
+    }
 
-if ($method !== 'POST') {
-    Response::error('Method not allowed', 405);
-    exit;
-}
+    // Verify JWT token and admin access
+    $user = AuthMiddleware::verify();
+    $database = new Database();
+    $db = $database->connect();
 
-// Verify JWT token and admin access
-$user = AuthMiddleware::verify();
-$database = new Database();
-$db = $database->connect();
-verifyAdmin($db, $user['user_id']);
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
 
-// Check if file was uploaded
-if (!isset($_FILES['image'])) {
-    Response::error('No image file provided', 400);
-    exit;
-}
+    verifyAdmin($db, $user['user_id']);
 
-$file = $_FILES['image'];
+    // Check if file was uploaded
+    if (!isset($_FILES['image'])) {
+        Response::error('No image file provided', 400);
+        exit;
+    }
+
+    $file = $_FILES['image'];
 
 // Upload directory should be in public folder, not api folder
 $upload_dir = __DIR__ . '/../public/uploads/images/';
@@ -80,6 +88,9 @@ if (move_uploaded_file($file['tmp_name'], $filepath)) {
     error_log("Failed to move file from: " . $file['tmp_name'] . " to: " . $filepath);
     error_log("Error: " . error_get_last());
     Response::error('Failed to upload image', 500);
+}
+} catch (Exception $e) {
+    Response::error($e->getMessage(), 500);
 }
 
 function verifyAdmin($db, $user_id)
