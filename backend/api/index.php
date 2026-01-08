@@ -45,10 +45,15 @@ if (empty($request_path)) {
             'POST /api/products',
             'GET /api/reviews',
             'POST /api/reviews',
+            'GET /api/faqs',
+            'POST /api/faqs',
+            'PUT /api/faqs/{id}',
+            'DELETE /api/faqs/{id}',
             'GET /api/orders',
             'POST /api/orders',
             'GET /api/users',
             'PUT /api/users',
+            'GET /api/admin/users',
             'POST /api/upload-image'
         ]
     ]);
@@ -58,6 +63,7 @@ if (empty($request_path)) {
 // Split path into segments
 $segments = explode('/', $request_path);
 $route = $segments[0] ?? '';
+$subroute = $segments[1] ?? '';
 
 // Route handler - include the appropriate API file
 switch ($route) {
@@ -73,8 +79,23 @@ switch ($route) {
     case 'orders':
         require_once __DIR__ . '/orders.php';
         break;
+    case 'faqs':
+        require_once __DIR__ . '/faqs.php';
+        break;
     case 'users':
         require_once __DIR__ . '/users.php';
+        break;
+    case 'admin':
+        // Route admin endpoints
+        switch ($subroute) {
+            case 'users':
+                require_once __DIR__ . '/admin/users.php';
+                break;
+            default:
+                http_response_code(404);
+                echo json_encode(['success' => false, 'status' => 'error', 'message' => 'Admin route not found']);
+                break;
+        }
         break;
     case 'upload-image':
         require_once __DIR__ . '/upload-image.php';

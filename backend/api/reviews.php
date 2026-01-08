@@ -1,39 +1,59 @@
 <?php
 
+// Set JSON header immediately
+header('Content-Type: application/json');
+
+// Error handling
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
 require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/utils/JWT.php';
 require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
-$input = json_decode(file_get_contents('php://input'), true);
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
+    $input = json_decode(file_get_contents('php://input'), true);
 
-$database = new Database();
-$db = $database->connect();
+    $database = new Database();
+    $db = $database->connect();
 
-// Get review ID from URL if available
-$request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$path_parts = array_filter(explode('/', $request_path));
-$review_id = end($path_parts) !== 'reviews' ? end($path_parts) : null;
-
-if ($method === 'GET') {
-    getReviews($db);
-} elseif ($method === 'POST') {
-    // Optional authentication - allow guest reviews too
-    $user_id = null;
-    if (isset(getallheaders()['Authorization'])) {
-        $user = AuthMiddleware::verify();
-        $user_id = $user['user_id'];
+    if (!$db) {
+        throw new Exception('Database connection failed');
     }
-    createReview($db, $input, $user_id);
-} elseif ($method === 'PUT') {
-    $user = AuthMiddleware::verify();
-    updateReview($db, $input, $review_id, $user['user_id']);
-} elseif ($method === 'DELETE') {
-    $user = AuthMiddleware::verify();
-    deleteReview($db, $review_id, $user['user_id']);
-} else {
-    Response::error('Method not allowed', 405);
+
+    // Get review ID from URL if available
+    $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $path_parts = array_filter(explode('/', $request_path));
+    $review_id = end($path_parts) !== 'reviews' ? end($path_parts) : null;
+
+    if ($method === 'GET') {
+        getReviews($db);
+    } elseif ($method === 'POST') {
+        // Optional authentication - allow guest reviews too
+        $user_id = null;
+        if (isset(getallheaders()['Authorization'])) {
+            try {
+                $user = AuthMiddleware::verify();
+                $user_id = isset($user['user_id']) ? $user['user_id'] : null;
+            } catch (Exception $e) {
+                // If verification fails, allow guest review
+                $user_id = null;
+            }
+        }
+        createReview($db, $input, $user_id);
+    } elseif ($method === 'PUT') {
+        $user = AuthMiddleware::verify();
+        updateReview($db, $input, $review_id, $user['user_id']);
+    } elseif ($method === 'DELETE') {
+        $user = AuthMiddleware::verify();
+        deleteReview($db, $review_id, $user['user_id']);
+    } else {
+        Response::error('Method not allowed', 405);
+    }
+} catch (Exception $e) {
+    Response::error($e->getMessage(), 500);
 }
 
 function getReviews($db)
@@ -77,23 +97,69 @@ function createReview($db, $input, $user_id)
     $product_id = intval($input['product_id']);
     $rating = intval($input['rating']);
     $comment = trim($input['comment'] ?? '');
+    $customer_name = trim($input['customer_name'] ?? '');
+    $customer_email = trim($input['customer_email'] ?? '');
+    $title = trim($input['title'] ?? '');
+    $status = trim($input['status'] ?? 'pending');
+
+    // If user is authenticated, use their name and email from database
+    if ($user_id) {
+        $user_stmt = $db->prepare("SELECT name, email FROM users WHERE id = ?");
+        $user_stmt->bind_param('i', $user_id);
+        $user_stmt->execute();
+        $user_result = $user_stmt->get_result();
+        
+        if ($user_result->num_rows > 0) {
+            $user = $user_result->fetch_assoc();
+            $customer_name = $user['name'];
+            $customer_email = $user['email'];
+        }
+    }
 
     if ($rating < 1 || $rating > 5) {
         Response::validationError(['rating' => 'Rating must be between 1 and 5']);
     }
 
-    $query = "INSERT INTO reviews (product_id, user_id, rating, comment, created_at) VALUES (?, ?, ?, ?, NOW())";
+    // Check if product exists
+    $product_check = $db->prepare("SELECT id FROM products WHERE id = ?");
+    $product_check->bind_param('i', $product_id);
+    $product_check->execute();
+    $product_result = $product_check->get_result();
+    
+    if ($product_result->num_rows === 0) {
+        Response::error('Product not found', 404);
+    }
+
+    // Try to insert with status column first (if it exists)
+    $query = "INSERT INTO reviews (product_id, user_id, rating, title, comment, status, created_at) 
+              VALUES (?, ?, ?, ?, ?, ?, NOW())";
     $stmt = $db->prepare($query);
-    $stmt->bind_param('iiis', $product_id, $user_id, $rating, $comment);
+    
+    if (!$stmt) {
+        // If query fails, try without status column (backward compatibility)
+        $query = "INSERT INTO reviews (product_id, user_id, rating, title, comment, created_at) 
+                  VALUES (?, ?, ?, ?, ?, NOW())";
+        $stmt = $db->prepare($query);
+        
+        if (!$stmt) {
+            Response::error('Database error: ' . $db->error, 500);
+        }
+        
+        // Bind without status
+        $stmt->bind_param('iiiss', $product_id, $user_id, $rating, $title, $comment);
+    } else {
+        // Bind with status
+        $stmt->bind_param('iiisss', $product_id, $user_id, $rating, $title, $comment, $status);
+    }
 
     if ($stmt->execute()) {
         Response::success(
             ['review_id' => $stmt->insert_id],
-            'Review created successfully',
+            'Review submitted successfully! It will appear after admin approval.',
             201
         );
     } else {
-        Response::error('Failed to create review', 500);
+        Response::error('Failed to create review: ' . $stmt->error, 500);
     }
 }
 
@@ -125,7 +191,7 @@ function updateReview($db, $input, $review_id, $user_id)
     $params = [];
     $types = '';
 
-    $allowed_fields = ['rating', 'comment', 'status'];
+    $allowed_fields = ['title', 'rating', 'comment', 'status'];
     
     foreach ($allowed_fields as $field) {
         if (isset($input[$field])) {
@@ -173,19 +239,14 @@ function deleteReview($db, $review_id, $user_id)
         return;
     }
 
-    // Check if review exists and user owns it
-    $check = $db->prepare("SELECT id, user_id FROM reviews WHERE id = ?");
+    // Check if review exists
+    $check = $db->prepare("SELECT id FROM reviews WHERE id = ?");
     $check->bind_param('i', $review_id);
     $check->execute();
     $review = $check->get_result()->fetch_assoc();
     
     if (!$review) {
         Response::error('Review not found', 404);
-        return;
-    }
-    
-    if ($review['user_id'] !== $user_id) {
-        Response::error('Unauthorized to delete this review', 403);
         return;
     }
 

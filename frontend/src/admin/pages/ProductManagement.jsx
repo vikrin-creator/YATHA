@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/authService'
 
 function ProductManagement() {
   const API_BASE_URL = window.location.hostname === 'localhost' 
@@ -216,8 +217,15 @@ function ProductManagement() {
     
     try {
       console.log('📤 Sending to /api/upload-image')
+      const headers = {}
+      const token = getToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/upload-image`, {
         method: 'POST',
+        headers,
         body: formData
       })
       
@@ -286,19 +294,27 @@ function ProductManagement() {
       
       console.log('📤 Product data ready:', productData)
       
+      const headers = {
+        'Content-Type': 'application/json'
+      }
+      const token = getToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       let response
       if (editingProduct) {
         console.log(`🔄 PUT request to: /api/products/${editingProduct.id}`)
         response = await fetch(`${API_BASE_URL}/api/products/${editingProduct.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(productData)
         })
       } else {
         console.log(`➕ POST request to: /api/products`)
         response = await fetch(`${API_BASE_URL}/api/products`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(productData)
         })
       }
@@ -329,8 +345,15 @@ function ProductManagement() {
   const handleDeleteProduct = async (productId) => {
     if (confirm('Are you sure you want to delete this product?')) {
       try {
+        const headers = {}
+        const token = getToken()
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers
         })
         const data = await response.json()
         if (data.success) {
@@ -363,16 +386,16 @@ function ProductManagement() {
   }
 
   return (
-    <div>
+    <div className="p-4 md:p-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Product Management</h1>
           <p className="text-gray-600 mt-1">Manage your products, inventory, and pricing</p>
         </div>
         <button
           onClick={handleAddProduct}
-          className="bg-moringa-green text-white px-4 py-2 rounded-lg hover:bg-moringa-green/90 transition-colors flex items-center gap-2"
+          className="bg-moringa-green text-white px-4 py-2 rounded-lg hover:bg-moringa-green/90 transition-colors flex items-center gap-2 whitespace-nowrap"
         >
           <span className="material-symbols-outlined text-lg">add</span>
           Add Product

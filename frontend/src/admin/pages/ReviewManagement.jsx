@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getToken } from '../../services/authService'
 
 function ReviewManagement() {
   const API_BASE_URL = window.location.hostname === 'localhost' 
@@ -74,9 +75,17 @@ function ReviewManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      const headers = {
+        'Content-Type': 'application/json'
+      }
+      const token = getToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/reviews/${editingReview.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(formData)
       })
       const data = await response.json()
@@ -92,8 +101,15 @@ function ReviewManagement() {
   const handleDeleteReview = async (reviewId) => {
     if (confirm('Are you sure you want to delete this review?')) {
       try {
+        const headers = {}
+        const token = getToken()
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
         const response = await fetch(`${API_BASE_URL}/api/reviews/${reviewId}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers
         })
         const data = await response.json()
         if (data.success) {
@@ -138,7 +154,7 @@ function ReviewManagement() {
   }
 
   return (
-    <div>
+    <div className="p-4 md:p-6">
       {/* Page Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Review Management</h1>
@@ -179,8 +195,8 @@ function ReviewManagement() {
             <div className="flex-1">
               <p className="text-gray-500 text-sm">Avg Rating</p>
               <p className="text-2xl font-bold text-amber-600">
-                {reviews.length > 0 
-                  ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
+                {reviews.filter(r => r.status === 'approved').length > 0 
+                  ? (reviews.filter(r => r.status === 'approved').reduce((sum, r) => sum + parseFloat(r.rating), 0) / reviews.filter(r => r.status === 'approved').length).toFixed(1) 
                   : '0'}
               </p>
             </div>
@@ -190,10 +206,10 @@ function ReviewManagement() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="mb-6 flex gap-4">
+      <div className="mb-6 flex flex-wrap gap-2 md:gap-4">
         <button
           onClick={() => setFilterStatus('all')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 md:px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base ${
             filterStatus === 'all' 
               ? 'bg-moringa-green text-white' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -203,7 +219,7 @@ function ReviewManagement() {
         </button>
         <button
           onClick={() => setFilterStatus('approved')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 md:px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base ${
             filterStatus === 'approved' 
               ? 'bg-green-500 text-white' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -213,7 +229,7 @@ function ReviewManagement() {
         </button>
         <button
           onClick={() => setFilterStatus('pending')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-3 md:px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base ${
             filterStatus === 'pending' 
               ? 'bg-yellow-500 text-white' 
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -226,64 +242,66 @@ function ReviewManagement() {
       {/* Reviews Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-xs md:text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Comment</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Comment</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Date</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {filteredReviews.length > 0 ? (
                 filteredReviews.map((review) => (
                   <tr key={review.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{review.customer_name}</p>
-                        <p className="text-xs text-gray-500">{review.customer_email}</p>
+                        <p className="text-xs md:text-sm font-medium text-gray-900">{review.customer_name}</p>
+                        <p className="text-xs text-gray-500 hidden md:inline">{review.customer_email}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <p className="text-sm text-gray-900">{review.product_name || 'Unknown'}</p>
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap">
+                      <p className="text-xs md:text-sm text-gray-900 truncate max-w-xs">{review.product_name || 'Unknown'}</p>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-1">{renderStars(review.rating)}</div>
                     </td>
-                    <td className="px-6 py-4 max-w-xs truncate">
-                      <p className="text-sm text-gray-600">{review.comment}</p>
+                    <td className="px-3 md:px-6 py-4 max-w-xs hidden md:table-cell">
+                      <p className="text-xs md:text-sm text-gray-600 truncate">{review.comment}</p>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap">
                       <span className={getStatusBadge(review.status)}>
                         {review.status.charAt(0).toUpperCase() + review.status.slice(1)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm text-gray-600 hidden md:table-cell">
                       {new Date(review.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                    <td className="px-3 md:px-6 py-4 whitespace-nowrap text-xs md:text-sm space-x-1 md:space-x-2">
                       <button
                         onClick={() => handleEditReview(review)}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        className="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="Edit review"
                       >
-                        Edit
+                        ✏️
                       </button>
                       <button
                         onClick={() => handleDeleteReview(review.id)}
-                        className="text-red-600 hover:text-red-800 font-medium"
+                        className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Delete review"
                       >
-                        Delete
+                        🗑️
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="7" className="px-3 md:px-6 py-8 text-center text-gray-500">
                     No reviews found
                   </td>
                 </tr>
@@ -296,7 +314,7 @@ function ReviewManagement() {
       {/* Edit Modal */}
       {showEditModal && editingReview && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-4 md:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Edit Review</h2>
               <button

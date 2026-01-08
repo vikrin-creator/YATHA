@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { getToken, isAuthenticated, getCurrentUser } from '../services/authService'
 
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? "http://localhost:8000" 
@@ -8,6 +9,8 @@ function Reviews({ productId, slug, productName }) {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_email: '',
@@ -17,9 +20,26 @@ function Reviews({ productId, slug, productName }) {
   })
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
+  const carouselRef = useRef(null)
+  const startXRef = useRef(0)
+  const scrollLeftRef = useRef(0)
 
   useEffect(() => {
     fetchReviews()
+    // Check if user is logged in
+    if (isAuthenticated()) {
+      setIsLoggedIn(true)
+      const user = getCurrentUser()
+      setCurrentUser(user)
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          customer_name: user.name || '',
+          customer_email: user.email || ''
+        }))
+      }
+    }
   }, [productId])
 
   const fetchReviews = async () => {
@@ -38,6 +58,28 @@ function Reviews({ productId, slug, productName }) {
     }
   }
 
+  const handleMouseDown = (e) => {
+    setIsDragging(true)
+    startXRef.current = e.pageX - carouselRef.current.offsetLeft
+    scrollLeftRef.current = carouselRef.current.scrollLeft
+  }
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return
+    e.preventDefault()
+    const x = e.pageX - carouselRef.current.offsetLeft
+    const walk = (x - startXRef.current) * 1.5
+    carouselRef.current.scrollLeft = scrollLeftRef.current - walk
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -51,15 +93,29 @@ function Reviews({ productId, slug, productName }) {
     setSubmitting(true)
 
     try {
+      const headers = {
+        'Content-Type': 'application/json'
+      }
+
+      const token = getToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           product_id: productId,
           ...formData,
           status: 'pending'
         })
       })
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned invalid response format')
+      }
 
       const data = await response.json()
       if (data.success) {
@@ -74,9 +130,12 @@ function Reviews({ productId, slug, productName }) {
         setShowForm(false)
         fetchReviews()
         setTimeout(() => setSuccessMessage(''), 5000)
+      } else {
+        setSuccessMessage('Error: ' + (data.message || 'Failed to submit review'))
       }
     } catch (error) {
       console.error('Error submitting review:', error)
+      setSuccessMessage('Error submitting review. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -103,25 +162,36 @@ function Reviews({ productId, slug, productName }) {
             transform: translateX(0);
           }
           100% {
-            transform: translateX(-50%);
+            transform: translateX(calc(-100% / 2));
           }
         }
         
         .auto-scroll-container {
           display: flex;
-          animation: scroll-left 40s linear infinite;
+          animation: scroll-left 25s linear infinite;
           gap: 1.5rem;
+          padding-bottom: 1rem;
+          will-change: transform;
         }
         
-        .auto-scroll-container:hover {
+        .auto-scroll-container.pause-animation {
+          animation-play-state: paused;
+        }
+        
+        .auto-scroll-container:hover:not(.pause-animation) {
           animation-play-state: paused;
         }
         
         .reviews-wrapper {
-          overflow: hidden;
+          overflow-x: scroll;
+          overflow-y: hidden;
+          width: 100%;
+          scroll-behavior: smooth;
+          user-select: none;
         }
         
         .reviews-wrapper::-webkit-scrollbar {
+          height: 0;
           display: none;
         }
         
@@ -169,8 +239,15 @@ function Reviews({ productId, slug, productName }) {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-moringa-green"></div>
           </div>
         ) : reviews.length > 0 ? (
-          <div className="reviews-wrapper mb-8">
-            <div className="flex gap-6 overflow-x-auto pb-4">
+          <div 
+            className={`reviews-wrapper mb-8 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            ref={carouselRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+          >
+            <div className={`auto-scroll-container ${isDragging ? 'pause-animation' : ''}`}>
               {reviews.map((review) => (
                 <div key={review.id} className="bg-white p-3 sm:p-4 rounded-lg border border-neutral-grey/10 shadow-sm hover:shadow-md transition-shadow flex-shrink-0 w-80">
                   <div className="flex items-center gap-1 text-golden-yellow mb-3">
@@ -180,7 +257,9 @@ function Reviews({ productId, slug, productName }) {
                       </span>
                     ))}
                   </div>
-                  <h4 className="font-bold text-[#111518] mb-2">{review.title || 'Review'}</h4>
+                  {review.title && (
+                    <h4 className="font-bold text-[#111518] mb-2">{review.title}</h4>
+                  )}
                   <p className="text-neutral-grey text-sm mb-4 line-clamp-3">"{review.comment}"</p>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-clay-brown">{review.customer_name}</span>
@@ -221,8 +300,9 @@ function Reviews({ productId, slug, productName }) {
                       value={formData.customer_name}
                       onChange={handleInputChange}
                       placeholder="Your name"
+                      readOnly={isLoggedIn}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent"
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent ${isLoggedIn ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                   </div>
                   <div>
@@ -233,7 +313,8 @@ function Reviews({ productId, slug, productName }) {
                       value={formData.customer_email}
                       onChange={handleInputChange}
                       placeholder="your@email.com"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent"
+                      readOnly={isLoggedIn}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent ${isLoggedIn ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
                   </div>
                 </div>
@@ -252,6 +333,19 @@ function Reviews({ productId, slug, productName }) {
                     <option value={2}>⭐⭐ Fair</option>
                     <option value={1}>⭐ Poor</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Review Title</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Great quality, would recommend!"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent"
+                  />
                 </div>
 
                 <div>

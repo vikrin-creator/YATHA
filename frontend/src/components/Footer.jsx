@@ -1,9 +1,14 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import FooterLogo from '../assets/images/FooterLogo.png'
+import FAQModal from './FAQModal'
 
 function Footer() {
+  const [isFAQModalOpen, setIsFAQModalOpen] = useState(false)
+
   return (
     <footer className="bg-white/50 border-t border-neutral-grey/20 mt-auto">
+      <FAQModal isOpen={isFAQModalOpen} onClose={() => setIsFAQModalOpen(false)} />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8">
           <div className="col-span-2 lg:col-span-1">
@@ -26,7 +31,7 @@ function Footer() {
               <li><a className="hover:text-primary" href="#">Our Story</a></li>
               <li><a className="hover:text-primary" href="#">Blog</a></li>
               <li><a className="hover:text-primary" href="#">Contact Us</a></li>
-              <li><a className="hover:text-primary" href="#">FAQ</a></li>
+              <li><button onClick={() => setIsFAQModalOpen(true)} className="hover:text-primary transition-colors text-left">FAQ</button></li>
             </ul>
           </div>
           <div>

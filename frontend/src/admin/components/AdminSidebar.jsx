@@ -25,6 +25,11 @@ function AdminSidebar({ isCollapsed, setIsCollapsed }) {
       icon: 'receipt_long'
     },
     {
+      title: 'FAQ Management',
+      path: '/admin/faqs',
+      icon: 'help'
+    },
+    {
       title: 'User Management',
       path: '/admin/users',
       icon: 'group'

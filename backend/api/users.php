@@ -21,7 +21,7 @@ if ($method === 'GET') {
 
 function getUserProfile($db, $user_id)
 {
-    $query = "SELECT id, name, email, created_at FROM users WHERE id = ?";
+    $query = "SELECT id, name, email, phone, created_at FROM users WHERE id = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param('i', $user_id);
     $stmt->execute();

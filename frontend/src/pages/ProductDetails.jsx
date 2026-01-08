@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import Reviews from '../components/Reviews'
 
 function ProductDetails() {
@@ -8,12 +8,14 @@ function ProductDetails() {
     : window.location.origin + '/backend';
 
   const { slug } = useParams()
+  const navigate = useNavigate()
   const [product, setProduct] = useState(null)
   const [relatedProducts, setRelatedProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [purchaseType, setPurchaseType] = useState('subscribe')
+  const [addedToCart, setAddedToCart] = useState(false)
 
   useEffect(() => {
     fetchProductDetails()
@@ -87,6 +89,45 @@ function ProductDetails() {
   const handleQuantityInput = (e) => {
     const value = Math.max(1, parseInt(e.target.value) || 1)
     setQuantity(value)
+  }
+
+  const handleAddToCart = () => {
+    // Get existing cart from localStorage
+    const existingCart = localStorage.getItem('cart')
+    const cart = existingCart ? JSON.parse(existingCart) : []
+
+    // Check if product already exists in cart
+    const existingItem = cart.find(item => item.id === product.id)
+
+    if (existingItem) {
+      // Update quantity if product already in cart
+      existingItem.quantity += quantity
+    } else {
+      // Add new item to cart
+      cart.push({
+        id: product.id,
+        name: product.name,
+        price: purchaseType === 'subscribe' ? product.price * 0.9 : product.price,
+        quantity: quantity,
+        image: product.image,
+        purchaseType: purchaseType
+      })
+    }
+
+    // Save cart back to localStorage
+    localStorage.setItem('cart', JSON.stringify(cart))
+
+    // Dispatch custom event to update navbar cart count
+    window.dispatchEvent(new Event('cartUpdated'))
+
+    // Show confirmation
+    setAddedToCart(true)
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setAddedToCart(false)
+      setQuantity(1)
+    }, 2000)
   }
 
   return (
@@ -226,9 +267,18 @@ function ProductDetails() {
                   </button>
                 </div>
                 
-                <button className="flex-1 rounded-full bg-primary h-10 sm:h-12 text-white font-semibold text-sm sm:text-base hover:bg-opacity-90 transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-lg">shopping_cart</span>
-                  Add to Cart
+                <button 
+                  onClick={handleAddToCart}
+                  className={`flex-1 rounded-full h-10 sm:h-12 text-white font-semibold text-sm sm:text-base transition-all shadow-lg flex items-center justify-center gap-2 ${
+                    addedToCart 
+                      ? 'bg-moringa-green shadow-moringa-green/20' 
+                      : 'bg-primary hover:bg-opacity-90 shadow-primary/20'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {addedToCart ? 'check_circle' : 'shopping_cart'}
+                  </span>
+                  {addedToCart ? 'Added to Cart' : 'Add to Cart'}
                 </button>
               </div>
 
@@ -264,19 +314,19 @@ function ProductDetails() {
         <Reviews productId={product.id} slug={slug} productName={product.name} />
 
         {/* Frequently Bought Together */}
-        <section className="py-8 sm:py-12 md:py-16 bg-background-light">
+        <section className="py-6 sm:py-12 md:py-16 bg-background-light">
           <div className="mx-auto w-full max-w-6xl px-4">
-            <h2 className="text-center text-xl md:text-2xl font-bold text-[#111518] tracking-tight mb-6">Frequently Bought Together</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <h2 className="text-center text-lg sm:text-xl md:text-2xl font-bold text-[#111518] tracking-tight mb-4 sm:mb-6">Frequently Bought Together</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
               {relatedProducts.map((relatedProduct) => (
                 <Link 
                   key={relatedProduct.id}
                   to={`/product/${relatedProduct.slug}`}
-                  className="flex flex-col gap-3 group text-center"
+                  className="flex flex-col gap-2 group text-center"
                 >
-                  <div className="w-full aspect-square rounded-xl overflow-hidden bg-gray-200 relative">
+                  <div className="w-full aspect-square rounded-lg sm:rounded-xl overflow-hidden bg-gray-200 relative">
                     {relatedProduct.status === 'active' && relatedProduct.stock_quantity < 20 && (
-                      <span className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 text-xs font-bold rounded text-clay-brown z-10">
+                      <span className="absolute top-2 left-2 bg-white/90 backdrop-blur px-2 py-0.5 text-xs font-bold rounded text-clay-brown z-10">
                         Selling Fast
                       </span>
                     )}
@@ -291,9 +341,9 @@ function ProductDetails() {
                       }}
                     />
                   </div>
-                  <h3 className="mt-4 text-xl font-bold text-[#111518]">{relatedProduct.name}</h3>
-                  <p className="text-primary font-bold">${relatedProduct.price}</p>
-                  <button className="mt-2 w-full rounded-full border border-primary text-primary font-semibold py-2 hover:bg-primary hover:text-white transition-colors">Add to Cart</button>
+                  <h3 className="text-sm sm:text-base font-bold text-[#111518] line-clamp-2">{relatedProduct.name}</h3>
+                  <p className="text-primary font-bold text-sm sm:text-base">₹{relatedProduct.price}</p>
+                  <button className="mt-1 w-full rounded-lg border border-primary text-primary font-semibold py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-primary hover:text-white transition-colors">Add to Cart</button>
                 </Link>
               ))}
             </div>

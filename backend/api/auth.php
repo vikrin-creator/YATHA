@@ -1,17 +1,27 @@
 <?php
 
+header('Content-Type: application/json');
+
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
 require_once __DIR__ . '/../src/utils/JWT.php';
 require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
-$input = json_decode(file_get_contents('php://input'), true);
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
+    $input = json_decode(file_get_contents('php://input'), true);
 
-$database = new Database();
-$db = $database->connect();
+    $database = new Database();
+    $db = $database->connect();
 
-// Get action from URL
-$request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (!$db) {
+        throw new Exception('Database connection failed');
+    }
+
+    // Get action from URL
+    $request_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Remove /backend/api, /backend, or /api from the path
 $request_path = preg_replace('#^/backend/api/#', '', $request_path);
@@ -47,6 +57,7 @@ function handleRegister($db, $input)
     $email = trim($input['email']);
     $password = $input['password'];
     $name = trim($input['name']);
+    $phone = isset($input['phone']) ? trim($input['phone']) : null;
 
     $query = "SELECT id FROM users WHERE email = ?";
     $stmt = $db->prepare($query);
@@ -59,9 +70,9 @@ function handleRegister($db, $input)
     }
 
     $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-    $query = "INSERT INTO users (name, email, password, created_at) VALUES (?, ?, ?, NOW())";
+    $query = "INSERT INTO users (name, email, phone, password, created_at) VALUES (?, ?, ?, ?, NOW())";
     $stmt = $db->prepare($query);
-    $stmt->bind_param('sss', $name, $email, $hashed_password);
+    $stmt->bind_param('ssss', $name, $email, $phone, $hashed_password);
 
     if ($stmt->execute()) {
         $user_id = $stmt->insert_id;
@@ -78,7 +89,8 @@ function handleRegister($db, $input)
                 'user' => [
                     'id' => $user_id,
                     'name' => $name,
-                    'email' => $email
+                    'email' => $email,
+                    'phone' => $phone
                 ],
                 'token' => $token
             ]
@@ -99,7 +111,7 @@ function handleLogin($db, $input)
     $email = trim($input['email']);
     $password = $input['password'];
 
-    $query = "SELECT id, password, name FROM users WHERE email = ?";
+    $query = "SELECT id, password, name, phone FROM users WHERE email = ?";
     $stmt = $db->prepare($query);
     $stmt->bind_param('s', $email);
     $stmt->execute();
@@ -127,12 +139,16 @@ function handleLogin($db, $input)
             'user' => [
                 'id' => $user['id'],
                 'name' => $user['name'],
-                'email' => $email
+                'email' => $email,
+                'phone' => $user['phone']
             ],
             'token' => $token
         ]
     ]);
     http_response_code(200);
     exit;
+}
+} catch (Exception $e) {
+    Response::error($e->getMessage(), 500);
 }
 ?>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/auth.css";
 
@@ -11,6 +11,11 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 
 export default function AuthPage() {
   const navigate = useNavigate();
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
   
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
@@ -23,6 +28,7 @@ export default function AuthPage() {
   const [signupFirstName, setSignupFirstName] = useState("");
   const [signupLastName, setSignupLastName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [signupConfirmPassword, setSignupConfirmPassword] = useState(false);
@@ -77,7 +83,7 @@ export default function AuthPage() {
     setSignupError("");
 
     // Validation
-    if (!signupFirstName || !signupLastName || !signupEmail || !signupPassword || !signupConfirmPassword) {
+    if (!signupFirstName || !signupLastName || !signupEmail || !signupPhone || !signupPassword || !signupConfirmPassword) {
       setSignupError("Please fill in all fields");
       return;
     }
@@ -103,6 +109,7 @@ export default function AuthPage() {
         body: JSON.stringify({
           name: `${signupFirstName} ${signupLastName}`,
           email: signupEmail,
+          phone: signupPhone,
           password: signupPassword,
         }),
       });
@@ -245,6 +252,14 @@ export default function AuthPage() {
               placeholder="Email Address"
               value={signupEmail}
               onChange={(e) => setSignupEmail(e.target.value)}
+              required
+            />
+
+            <input 
+              type="tel" 
+              placeholder="Mobile Number"
+              value={signupPhone}
+              onChange={(e) => setSignupPhone(e.target.value)}
               required
             />
             
