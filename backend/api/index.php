@@ -65,6 +65,11 @@ $segments = explode('/', $request_path);
 $route = $segments[0] ?? '';
 $subroute = $segments[1] ?? '';
 
+// Store segments in globals for use by included files
+$GLOBALS['route'] = $route;
+$GLOBALS['subroute'] = $subroute;
+$GLOBALS['segments'] = $segments;
+
 // Route handler - include the appropriate API file
 switch ($route) {
     case 'auth':
