@@ -49,7 +49,7 @@ function ProductManagement() {
     console.log('📥 Starting fetchProducts...')
     
     try {
-      const response = await fetch('http://localhost:8000/api/products')
+      const response = await fetch(`${API_BASE_URL}/api/products`)
       console.log('✅ Received response:', response.status)
       
       if (!response.ok) {
