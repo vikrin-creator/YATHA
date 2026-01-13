@@ -37,9 +37,10 @@ function Footer() {
           <div>
             <h3 className="font-bold text-sm sm:text-base text-[#111518]">Support</h3>
             <ul className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-neutral-grey">
-              <li><a className="hover:text-primary" href="#">Shipping &amp; Returns</a></li>
-              <li><a className="hover:text-primary" href="#">Privacy Policy</a></li>
-              <li><a className="hover:text-primary" href="#">Terms of Service</a></li>
+              <li><Link to="/shipping-policy" className="hover:text-primary transition-colors">Shipping Policy</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms-of-service" className="hover:text-primary transition-colors">Terms & Conditions</Link></li>
+              <li><Link to="/refund-policy" className="hover:text-primary transition-colors">Refund Policy</Link></li>
             </ul>
           </div>
           <div>
