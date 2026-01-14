@@ -13,7 +13,7 @@ function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8">
           <div className="col-span-2 lg:col-span-1">
             <Link to="/" className="flex items-center">
-              <img src={FooterLogo} alt="YATHA" className="h-16 sm:h-20 md:h-24" />
+              <img src={FooterLogo} alt="YATHA" className="h-24 sm:h-28 md:h-32" />
             </Link>
           </div>
           <div>

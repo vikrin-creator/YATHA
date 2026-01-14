@@ -147,7 +147,7 @@ function Navbar() {
         <div className="flex items-center justify-between border-b border-solid border-neutral-grey/20 py-3 md:py-4">
           {/* Logo */}
           <Link to="/" onClick={scrollToTop} className="flex items-center flex-shrink-0">
-            <img src={HeaderLogo} alt="YATHA" className="h-8 md:h-10 lg:h-12 object-contain" />
+            <img src={HeaderLogo} alt="YATHA" className="h-12 md:h-14 lg:h-16 object-contain" />
           </Link>
 
           {/* Desktop Navigation */}
