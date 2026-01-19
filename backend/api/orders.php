@@ -34,7 +34,7 @@ try {
 
 function getOrders($db, $user_id)
 {
-    $query = "SELECT id, user_id, total_amount, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC";
+    $query = "SELECT id, user_id, total_amount, status, created_at, stripe_session_id, shipping_address FROM orders WHERE user_id = ? ORDER BY created_at DESC";
     $stmt = $db->prepare($query);
     $stmt->bind_param('i', $user_id);
     $stmt->execute();

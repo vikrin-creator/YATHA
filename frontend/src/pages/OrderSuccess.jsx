@@ -41,6 +41,13 @@ function OrderSuccess() {
     try {
       const token = getToken()
       
+      if (!token) {
+        setError('Authentication failed. Please log in again.')
+        setLoading(false)
+        setTimeout(() => navigate('/auth'), 2000)
+        return
+      }
+      
       // Query orders by stripe_session_id
       const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'GET',
