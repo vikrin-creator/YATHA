@@ -169,7 +169,6 @@ function Profile() {
                 : 'text-neutral-grey hover:text-[#111518]'
             }`}
           >
-            <span className="material-symbols-outlined align-middle mr-2">auto_renew</span>
             My Subscriptions ({subscriptions.length})
           </button>
         </div>
@@ -325,7 +324,7 @@ function Profile() {
           <div>
             {subscriptions.length === 0 ? (
               <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                <span className="material-symbols-outlined text-6xl text-neutral-grey/30 block mb-4">auto_renew</span>
+               
                 <h2 className="text-xl font-bold text-[#111518] mb-2">No Active Subscriptions</h2>
                 <p className="text-neutral-grey mb-6">Subscribe to products to automatically receive regular deliveries</p>
                 <button
