@@ -67,7 +67,14 @@ try {
     $method = $_SERVER['REQUEST_METHOD'];
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
 
+    // Debug: Log authentication attempt
+    error_log('[subscriptions] Authentication attempt started');
+    
     $user = AuthMiddleware::verify();
+    
+    // Debug: Log successful authentication  
+    error_log('[subscriptions] User authenticated: ' . json_encode(['user_id' => $user['user_id'], 'role' => $user['role'] ?? 'user']));
+    
     $database = new Database();
     $db = $database->connect();
 
@@ -185,6 +192,14 @@ try {
         if ($addressId) $params["subscription_data[metadata][address_id]"] = $addressId;
         // Attach items JSON in metadata if present
         if (!empty($items)) $params["subscription_data[metadata][items]"] = json_encode(array_slice($items, 0, 10));
+
+        // Debug: Log the metadata being sent to Stripe
+        $metadata_debug = [
+            'user_id' => $user['user_id'], 
+            'address_id' => $addressId,
+            'items_count' => count($items)
+        ];
+        error_log('[subscriptions] Stripe metadata: ' . json_encode($metadata_debug));
 
         $sessionResp = stripeRequest('POST', '/v1/checkout/sessions', $params);
         if ($sessionResp['status'] >= 400) {
