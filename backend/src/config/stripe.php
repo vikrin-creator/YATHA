@@ -5,7 +5,8 @@
  * Reads from .env file FIRST (most reliable), then from environment variables.
  */
 
-function load_env_file($path) {
+if (!function_exists('load_env_file')) {
+    function load_env_file($path) {
     $result = [];
     if (!file_exists($path)) {
         error_log("[stripe-config] .env file not found at: $path");
@@ -42,6 +43,7 @@ function load_env_file($path) {
     }
     
     return $result;
+    }
 }
 
 // PRIMARY: Try to load from .env file directly

@@ -20,6 +20,7 @@ import ProductManagement from './admin/pages/ProductManagement'
 import ReviewManagement from './admin/pages/ReviewManagement'
 import FAQManagement from './admin/pages/FAQManagement'
 import OrderManagement from './admin/pages/OrderManagement'
+import OrderDetails from './admin/pages/OrderDetails'
 import UserManagement from './admin/pages/UserManagement'
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
           <Route path="reviews" element={<ReviewManagement />} />
           <Route path="faqs" element={<FAQManagement />} />
           <Route path="orders" element={<OrderManagement />} />
+          <Route path="orders/:orderId" element={<OrderDetails />} />
           <Route path="users" element={<UserManagement />} />
         </Route>
 

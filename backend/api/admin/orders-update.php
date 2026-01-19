@@ -1,10 +1,39 @@
 <?php
-header('Content-Type: application/json');
+// Set error handling to JSON
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("PHP Error: [$errno] $errstr in $errfile:$errline");
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => 'Server error: ' . $errstr,
+        'data' => []
+    ]);
+    exit;
+});
 
-require_once '../../src/config/Database.php';
-require_once '../../src/utils/Response.php';
-require_once '../../src/utils/JWT.php';
-require_once '../../src/middleware/AuthMiddleware.php';
+set_exception_handler(function($e) {
+    error_log("Exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => 'Server error: ' . $e->getMessage(),
+        'data' => []
+    ]);
+    exit;
+});
+
+header('Content-Type: application/json');
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
+require_once __DIR__ . '/../../src/config/Database.php';
+require_once __DIR__ . '/../../src/utils/Response.php';
+require_once __DIR__ . '/../../src/utils/JWT.php';
+require_once __DIR__ . '/../../src/middleware/AuthMiddleware.php';
 
 // Handle CORS
 header('Access-Control-Allow-Origin: *');
@@ -29,21 +58,23 @@ if (!$token) {
     exit();
 }
 
-$decoded = JWT::verify($token);
+$jwt = new JWT();
+$decoded = $jwt->verifyToken($token);
 if (!$decoded) {
     Response::error('Invalid token', 401);
     exit();
 }
 
-$userId = $decoded->user_id ?? null;
+$userId = $decoded['user_id'] ?? null;
 $input = json_decode(file_get_contents('php://input'), true);
 
 try {
     $db = new Database();
+    $conn = $db->connect();
     
     // Check if user is admin
     $userQuery = "SELECT role FROM users WHERE id = ?";
-    $stmt = $db->getConnection()->prepare($userQuery);
+    $stmt = $conn->prepare($userQuery);
     $stmt->bind_param("i", $userId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -63,6 +94,8 @@ try {
         exit();
     }
     
+    $orderId = (int)$orderId;
+    
     // Validate input
     if (!isset($input['status'])) {
         Response::error('Status is required', 400);
@@ -70,7 +103,7 @@ try {
     }
     
     $status = $input['status'];
-    $allowedStatuses = ['paid', 'pending', 'failed', 'shipped', 'delivered', 'cancelled'];
+    $allowedStatuses = ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
     
     if (!in_array($status, $allowedStatuses)) {
         Response::error('Invalid status. Allowed: ' . implode(', ', $allowedStatuses), 400);
@@ -84,9 +117,11 @@ try {
         WHERE id = ?
     ";
     
-    $stmt = $db->getConnection()->prepare($updateQuery);
+    error_log("Updating order. OrderID: " . $orderId . ", Status: " . $status);
+    
+    $stmt = $conn->prepare($updateQuery);
     if (!$stmt) {
-        throw new Exception('Prepare failed: ' . $db->getConnection()->error);
+        throw new Exception('Prepare failed: ' . $conn->error);
     }
     
     $stmt->bind_param("si", $status, $orderId);
@@ -94,6 +129,8 @@ try {
     if (!$stmt->execute()) {
         throw new Exception('Update failed: ' . $stmt->error);
     }
+    
+    error_log("Affected rows: " . $stmt->affected_rows);
     
     if ($stmt->affected_rows === 0) {
         Response::error('Order not found or no changes made', 404);
@@ -117,7 +154,7 @@ try {
         WHERE o.id = ?
     ";
     
-    $stmt = $db->getConnection()->prepare($fetchQuery);
+    $stmt = $conn->prepare($fetchQuery);
     $stmt->bind_param("i", $orderId);
     $stmt->execute();
     $result = $stmt->get_result();

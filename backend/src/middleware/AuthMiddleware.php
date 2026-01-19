@@ -75,4 +75,9 @@ class AuthMiddleware
         return null;
     }
 }
+
+// Helper function for convenience
+function getAuthToken() {
+    return AuthMiddleware::getToken();
+}
 ?>

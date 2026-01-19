@@ -44,7 +44,7 @@ function OrderManagement() {
       const data = await response.json()
       
       if (data.success) {
-        setOrders(data.data || [])
+        setOrders(data.data?.orders || [])
       } else {
         setError(data.message || 'Failed to load orders')
       }
@@ -60,7 +60,7 @@ function OrderManagement() {
     try {
       setUpdatingOrderId(orderId)
       const token = getToken()
-      const response = await fetch(`${API_BASE_URL}/api/admin/orders`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

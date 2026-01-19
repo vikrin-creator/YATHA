@@ -1,10 +1,39 @@
 <?php
-header('Content-Type: application/json');
+// Set error handling to JSON
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("PHP Error: [$errno] $errstr in $errfile:$errline");
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => 'Server error: ' . $errstr,
+        'data' => []
+    ]);
+    exit;
+});
 
-require_once '../../src/config/Database.php';
-require_once '../../src/utils/Response.php';
-require_once '../../src/utils/JWT.php';
-require_once '../../src/middleware/AuthMiddleware.php';
+set_exception_handler(function($e) {
+    error_log("Exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => 'Server error: ' . $e->getMessage(),
+        'data' => []
+    ]);
+    exit;
+});
+
+header('Content-Type: application/json');
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
+require_once __DIR__ . '/../../src/config/Database.php';
+require_once __DIR__ . '/../../src/utils/Response.php';
+require_once __DIR__ . '/../../src/utils/JWT.php';
+require_once __DIR__ . '/../../src/middleware/AuthMiddleware.php';
 
 // Handle CORS
 header('Access-Control-Allow-Origin: *');
@@ -29,20 +58,22 @@ if (!$token) {
     exit();
 }
 
-$decoded = JWT::verify($token);
+$jwt = new JWT();
+$decoded = $jwt->verifyToken($token);
 if (!$decoded) {
     Response::error('Invalid token', 401);
     exit();
 }
 
-$userId = $decoded->user_id ?? null;
+$userId = $decoded['user_id'] ?? null;
 
 try {
     $db = new Database();
+    $conn = $db->connect();
     
     // Check if user is admin
     $userQuery = "SELECT role FROM users WHERE id = ?";
-    $stmt = $db->getConnection()->prepare($userQuery);
+    $stmt = $conn->prepare($userQuery);
     $stmt->bind_param("i", $userId);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -70,10 +101,10 @@ try {
         ORDER BY o.created_at DESC
     ";
     
-    $result = $db->getConnection()->query($query);
+    $result = $conn->query($query);
     
     if (!$result) {
-        throw new Exception('Query failed: ' . $db->getConnection()->error);
+        throw new Exception('Query failed: ' . $conn->error);
     }
     
     $orders = [];

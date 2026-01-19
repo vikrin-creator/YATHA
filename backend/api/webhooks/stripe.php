@@ -125,19 +125,40 @@ function createOrderFromCheckoutSession($db, $session) {
         return true; // already processed
     }
 
+    // Fetch shipping address from addresses table if address_id is available
+    $shippingAddress = null;
+    if ($addressId) {
+        $addrStmt = $db->prepare("SELECT address_line_1, address_line_2, city, state, pincode, country FROM addresses WHERE id = ? LIMIT 1");
+        $addrStmt->bind_param('i', $addressId);
+        $addrStmt->execute();
+        $addrRes = $addrStmt->get_result();
+        if ($addrRes && $addrRes->num_rows > 0) {
+            $addrRow = $addrRes->fetch_assoc();
+            $shippingAddress = json_encode([
+                'address_line_1' => $addrRow['address_line_1'] ?? '',
+                'address_line_2' => $addrRow['address_line_2'] ?? '',
+                'city' => $addrRow['city'] ?? '',
+                'state' => $addrRow['state'] ?? '',
+                'pincode' => $addrRow['pincode'] ?? '',
+                'country' => $addrRow['country'] ?? ''
+            ]);
+            logWebhook('Shipping address fetched from addresses table', ['addressId' => $addressId]);
+        }
+    }
+
     // Insert order with paid status
-    $stmt = $db->prepare("INSERT INTO orders (user_id, total_amount, status, stripe_session_id, address_id, created_at) 
-                         VALUES (?, ?, 'paid', ?, ?, NOW())");
+    $stmt = $db->prepare("INSERT INTO orders (user_id, total_amount, status, stripe_session_id, address_id, shipping_address, created_at) 
+                         VALUES (?, ?, 'paid', ?, ?, ?, NOW())");
     if (!$stmt) {
         logWebhook('FAILED: Database prepare error', ['error' => $db->error]);
         return false;
     }
     
-    $stmt->bind_param('idsi', $userId, $amountTotal, $sessionId, $addressId);
+    $stmt->bind_param('idsiss', $userId, $amountTotal, $sessionId, $addressId, $shippingAddress);
     
     if ($stmt->execute()) {
         $orderId = $db->insert_id;
-        logWebhook('Order created successfully', ['orderId' => $orderId, 'userId' => $userId, 'amount' => $amountTotal]);
+        logWebhook('Order created successfully', ['orderId' => $orderId, 'userId' => $userId, 'amount' => $amountTotal, 'shippingAddress' => !is_null($shippingAddress) ? 'YES' : 'NO']);
         return true;
     } else {
         logWebhook('FAILED: Order insert error', ['error' => $stmt->error]);
