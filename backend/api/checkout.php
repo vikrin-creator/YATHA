@@ -133,11 +133,14 @@ try {
     $input = json_decode(file_get_contents('php://input'), true) ?: [];
 
     // Debug: Log the authentication attempt
+    $debugLog = __DIR__ . '/../checkout-debug.log';
+    file_put_contents($debugLog, '[' . date('Y-m-d H:i:s') . '] Authentication attempt started' . PHP_EOL, FILE_APPEND | LOCK_EX);
     error_log('[checkout] Authentication attempt started');
     
     $user = AuthMiddleware::verify();
     
     // Debug: Log successful authentication
+    file_put_contents($debugLog, '[' . date('Y-m-d H:i:s') . '] User authenticated: ' . json_encode(['user_id' => $user['user_id'], 'role' => $user['role'] ?? 'user']) . PHP_EOL, FILE_APPEND | LOCK_EX);
     error_log('[checkout] User authenticated: ' . json_encode(['user_id' => $user['user_id'], 'role' => $user['role'] ?? 'user']));
     
     $database = new Database();
