@@ -22,6 +22,7 @@ import FAQManagement from './admin/pages/FAQManagement'
 import OrderManagement from './admin/pages/OrderManagement'
 import OrderDetails from './admin/pages/OrderDetails'
 import UserManagement from './admin/pages/UserManagement'
+import SubscriptionManagement from './admin/pages/SubscriptionManagement'
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
           <Route path="orders" element={<OrderManagement />} />
           <Route path="orders/:orderId" element={<OrderDetails />} />
           <Route path="users" element={<UserManagement />} />
+          <Route path="subscriptions" element={<SubscriptionManagement />} />
         </Route>
 
         {/* Auth Route (without layout) */}

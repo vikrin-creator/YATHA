@@ -160,6 +160,9 @@ switch ($route) {
                     require_once __DIR__ . '/admin/orders.php';
                 }
                 break;
+            case 'subscriptions':
+                require_once __DIR__ . '/admin/subscriptions.php';
+                break;
             default:
                 http_response_code(404);
                 echo json_encode(['success' => false, 'status' => 'error', 'message' => 'Admin route not found']);
