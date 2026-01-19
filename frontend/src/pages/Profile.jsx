@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCurrentUser, isAuthenticated, getToken } from '../services/authService'
 import apiClient from '../services/api'
+import SubscriptionCard from '../components/SubscriptionCard'
 
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? "http://localhost:8000" 
@@ -10,6 +11,7 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 function Profile() {
   const [user, setUser] = useState(null)
   const [orders, setOrders] = useState([])
+  const [subscriptions, setSubscriptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('profile')
@@ -45,6 +47,7 @@ function Profile() {
 
     fetchUserProfile()
     fetchOrders()
+    fetchSubscriptions()
 
     // Listen for showOrdersTab event from navbar
     const handleShowOrdersTab = () => {
@@ -75,11 +78,30 @@ function Profile() {
     }
   }
 
-  // Refresh orders every 3 seconds to catch status updates from admin
+  const fetchSubscriptions = async () => {
+    try {
+      const token = getToken()
+      const response = await fetch(`${API_BASE_URL}/api/subscriptions`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      const data = await response.json()
+      if (data.success) {
+        setSubscriptions(data.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching subscriptions:', err)
+    }
+  }
+
+  // Refresh orders and subscriptions every 3 seconds to catch status updates from admin
   useEffect(() => {
     if (isAuthenticated()) {
       const interval = setInterval(() => {
         fetchOrders()
+        fetchSubscriptions()
       }, 3000)
       return () => clearInterval(interval)
     }
@@ -138,6 +160,17 @@ function Profile() {
           >
             <span className="material-symbols-outlined align-middle mr-2">shopping_bag</span>
             My Orders ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('subscriptions')}
+            className={`px-4 py-3 font-semibold text-sm transition-colors ${
+              activeTab === 'subscriptions'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-neutral-grey hover:text-[#111518]'
+            }`}
+          >
+            <span className="material-symbols-outlined align-middle mr-2">auto_renew</span>
+            My Subscriptions ({subscriptions.length})
           </button>
         </div>
 
@@ -281,6 +314,35 @@ function Profile() {
                       </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Subscriptions Tab */}
+        {activeTab === 'subscriptions' && (
+          <div>
+            {subscriptions.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                <span className="material-symbols-outlined text-6xl text-neutral-grey/30 block mb-4">auto_renew</span>
+                <h2 className="text-xl font-bold text-[#111518] mb-2">No Active Subscriptions</h2>
+                <p className="text-neutral-grey mb-6">Subscribe to products to automatically receive regular deliveries</p>
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-6 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90"
+                >
+                  Browse Subscription Products
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {subscriptions.map(subscription => (
+                  <SubscriptionCard 
+                    key={subscription.id} 
+                    subscription={subscription}
+                    onCanceled={() => fetchSubscriptions()}
+                  />
                 ))}
               </div>
             )}

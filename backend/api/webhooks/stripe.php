@@ -154,7 +154,7 @@ function createOrderFromCheckoutSession($db, $session) {
         return false;
     }
     
-    $stmt->bind_param('idsiss', $userId, $amountTotal, $sessionId, $addressId, $shippingAddress);
+    $stmt->bind_param('idsis', $userId, $amountTotal, $sessionId, $addressId, $shippingAddress);
     
     if ($stmt->execute()) {
         $orderId = $db->insert_id;

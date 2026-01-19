@@ -75,6 +75,47 @@ try {
         throw new Exception('Database connection failed');
     }
 
+    // GET /api/subscriptions - Get customer's active subscriptions
+    if ($method === 'GET') {
+        $stmt = $db->prepare("
+            SELECT 
+                s.id,
+                s.stripe_subscription_id,
+                s.product_id,
+                s.status,
+                s.created_at,
+                p.name as product_name,
+                p.price,
+                p.billing_interval,
+                p.billing_interval_count
+            FROM subscriptions s
+            JOIN products p ON s.product_id = p.id
+            WHERE s.user_id = ?
+            ORDER BY s.created_at DESC
+        ");
+        
+        if (!$stmt) {
+            throw new Exception('Database error: ' . $db->error);
+        }
+        
+        $stmt->bind_param('i', $user['user_id']);
+        
+        if (!$stmt->execute()) {
+            throw new Exception('Query execution failed');
+        }
+        
+        $result = $stmt->get_result();
+        $subscriptions = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $subscriptions[] = $row;
+        }
+        
+        Response::success('Subscriptions retrieved successfully', $subscriptions);
+        $stmt->close();
+        exit;
+    }
+
     if ($method === 'POST') {
         // Create a Stripe Checkout Session for subscription
         // Expected body: { items: [...], total: number, address_id, success_url, cancel_url }
@@ -164,6 +205,79 @@ try {
             ]
         ]);
         http_response_code(201);
+        exit;
+    } elseif ($method === 'DELETE') {
+        // DELETE /api/subscriptions/{id} - Cancel subscription
+        // Get subscription ID from URL path
+        $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $pathParts = explode('/', trim($path, '/'));
+        $subscriptionId = end($pathParts);
+        
+        if (!is_numeric($subscriptionId)) {
+            Response::error('Invalid subscription ID', 400);
+        }
+        
+        // Get subscription details
+        $stmt = $db->prepare("
+            SELECT stripe_subscription_id 
+            FROM subscriptions 
+            WHERE id = ? AND user_id = ?
+        ");
+        
+        if (!$stmt) {
+            throw new Exception('Database error: ' . $db->error);
+        }
+        
+        $stmt->bind_param('ii', $subscriptionId, $user['user_id']);
+        
+        if (!$stmt->execute()) {
+            throw new Exception('Query execution failed');
+        }
+        
+        $result = $stmt->get_result();
+        $subscription = $result->fetch_assoc();
+        $stmt->close();
+        
+        if (!$subscription) {
+            Response::error('Subscription not found', 404);
+        }
+        
+        // Cancel the Stripe subscription
+        try {
+            $cancelParams = [];
+            $cancelResp = stripeRequest('DELETE', '/v1/subscriptions/' . $subscription['stripe_subscription_id'], $cancelParams);
+            
+            if ($cancelResp['status'] >= 400) {
+                $errMsg = 'Failed to cancel subscription on Stripe';
+                if (is_array($cancelResp['body']) && isset($cancelResp['body']['error']['message'])) {
+                    $errMsg = $cancelResp['body']['error']['message'];
+                }
+                Response::error($errMsg, 400);
+            }
+        } catch (Exception $e) {
+            Response::error('Failed to cancel subscription: ' . $e->getMessage(), 500);
+        }
+        
+        // Update local database - set status to 'canceled'
+        $updateStmt = $db->prepare("
+            UPDATE subscriptions 
+            SET status = 'canceled'
+            WHERE id = ? AND user_id = ?
+        ");
+        
+        if (!$updateStmt) {
+            throw new Exception('Database error: ' . $db->error);
+        }
+        
+        $updateStmt->bind_param('ii', $subscriptionId, $user['user_id']);
+        
+        if (!$updateStmt->execute()) {
+            throw new Exception('Failed to update subscription status');
+        }
+        
+        $updateStmt->close();
+        
+        Response::success('Subscription canceled successfully');
         exit;
     } else {
         Response::error('Method not allowed', 405);
