@@ -1,11 +1,21 @@
 RewriteEngine On
 
-# Route /backend requests to backend folder
+# Don't rewrite actual files or directories
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# ✅ Route /api requests to backend API (REQUIRED FOR WEBHOOKS)
+RewriteCond %{REQUEST_URI} ^/api
+RewriteRule ^api/(.*)$ backend/api/$1 [L]
+
+# ✅ Route /backend requests to backend folder
 RewriteCond %{REQUEST_URI} ^/backend
 RewriteRule ^backend/(.*)$ backend/$1 [L]
 
-# Route all other requests to frontend
+# Route all other requests to frontend (React Router)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/api
 RewriteCond %{REQUEST_URI} !^/backend
 RewriteRule ^(.*)$ index.html [L]
