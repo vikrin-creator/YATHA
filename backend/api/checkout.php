@@ -40,17 +40,23 @@ require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
 error_log('[checkout] Loading Stripe config...');
-$stripeCfg = include __DIR__ . '/../src/config/stripe.php';
+$stripeConfigPath = __DIR__ . '/../src/config/stripe.php';
+error_log('[checkout] Stripe config path: ' . $stripeConfigPath);
+error_log('[checkout] Stripe config exists: ' . (file_exists($stripeConfigPath) ? 'YES' : 'NO'));
+
+$stripeCfg = include $stripeConfigPath;
 $stripeSecret = $stripeCfg['secret_key'] ?? '';
 error_log('[checkout] Stripe secret loaded: ' . (strlen($stripeSecret) > 0 ? 'YES (' . strlen($stripeSecret) . ' chars)' : 'NO'));
+error_log('[checkout] Stripe config keys: ' . json_encode(array_keys($stripeCfg)));
 
-if (!$stripeSecret) {
-    error_log('[checkout] ERROR: Stripe secret key not configured');
+if (!$stripeSecret || strlen(trim($stripeSecret)) === 0) {
+    error_log('[checkout] ERROR: Stripe secret key is empty. Full config: ' . json_encode($stripeCfg));
     http_response_code(500);
     echo json_encode([
         'success' => false,
         'status' => 'error',
-        'message' => 'Stripe not configured on server. Set STRIPE_SECRET_KEY in backend/.env'
+        'message' => 'Stripe not configured on server. Set STRIPE_SECRET_KEY in backend/.env',
+        'debug' => ['config_keys' => array_keys($stripeCfg ?? [])]
     ]);
     exit;
 }

@@ -8,15 +8,37 @@ ini_set('display_errors', '0');
 require_once __DIR__ . '/../../src/utils/Response.php';
 require_once __DIR__ . '/../../src/config/Database.php';
 
+// Log all webhook activity for debugging
+$logFile = __DIR__ . '/../../stripe-webhook.log';
+
+function logWebhook($message, $data = null) {
+    global $logFile;
+    $timestamp = date('Y-m-d H:i:s');
+    $message = "[{$timestamp}] {$message}";
+    if ($data) {
+        $message .= " | " . json_encode($data);
+    }
+    error_log($message, 3, $logFile);
+    error_log($message);
+}
+
+logWebhook('==== WEBHOOK REQUEST RECEIVED ====');
+
 $stripeCfg = include __DIR__ . '/../../src/config/stripe.php';
 $webhookSecret = $stripeCfg['webhook_secret'] ?? getenv('STRIPE_WEBHOOK_SECRET');
+
+logWebhook('Webhook secret configured', ['has_secret' => !empty($webhookSecret), 'secret_length' => strlen($webhookSecret ?? '')]);
 
 // Read raw payload
 $payload = @file_get_contents('php://input');
 $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
+logWebhook('Raw payload received', ['payload_length' => strlen($payload), 'sig_header_present' => !empty($sig_header)]);
+
 // Simple helper to respond
 function respond($code = 200, $msg = 'ok') {
+    global $logFile;
+    logWebhook('RESPONSE', ['code' => $code, 'msg' => $msg]);
     http_response_code($code);
     echo json_encode(['message' => $msg]);
     exit;
@@ -24,6 +46,8 @@ function respond($code = 200, $msg = 'ok') {
 
 // If webhook secret provided, verify signature per Stripe docs
 if ($webhookSecret) {
+    logWebhook('Verifying webhook signature');
+    
     // parse header for t= and v1=
     $elements = explode(',', $sig_header);
     $timestamp = null;
@@ -34,31 +58,49 @@ if ($webhookSecret) {
     }
 
     if (!$timestamp || !$v1) {
+        logWebhook('Signature verification failed - missing timestamp or v1');
         respond(400, 'Invalid Stripe signature header');
     }
 
     $signed_payload = $timestamp . '.' . $payload;
     $expected_sig = hash_hmac('sha256', $signed_payload, $webhookSecret);
 
+    logWebhook('Signature check', ['expected_sig' => substr($expected_sig, 0, 20) . '...', 'provided_sig' => substr($v1, 0, 20) . '...', 'match' => hash_equals($expected_sig, $v1)]);
+
     if (!hash_equals($expected_sig, $v1)) {
+        logWebhook('Signature verification failed - signature mismatch');
         respond(400, 'Invalid signature');
     }
+    
+    logWebhook('Signature verification passed');
+} else {
+    logWebhook('WARNING: No webhook secret configured, skipping signature verification');
 }
 
 $event = json_decode($payload, true);
 if (!$event) {
+    logWebhook('Failed to parse JSON payload');
     respond(400, 'Invalid payload');
 }
+
+logWebhook('Event parsed successfully', ['event_type' => $event['type'] ?? 'unknown']);
 
 // Connect DB
 $database = new Database();
 $db = $database->connect();
 if (!$db) {
+    logWebhook('Database connection failed');
     respond(500, 'DB connection failed');
 }
 
+logWebhook('Database connected');
+
 // Helper to create order from checkout session (one-time purchase)
 function createOrderFromCheckoutSession($db, $session) {
+    global $logFile;
+    
+    logWebhook('createOrderFromCheckoutSession called');
+    
     $sessionId = $session['id'] ?? null;
     $amountTotal = isset($session['amount_total']) ? intval($session['amount_total']) / 100 : 0;
     $customerId = $session['customer'] ?? null;
@@ -66,7 +108,12 @@ function createOrderFromCheckoutSession($db, $session) {
     $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
     $addressId = isset($metadata['address_id']) ? intval($metadata['address_id']) : null;
 
-    if (!$sessionId || !$userId) return false;
+    logWebhook('Session details', ['sessionId' => $sessionId, 'userId' => $userId, 'addressId' => $addressId, 'amount' => $amountTotal]);
+
+    if (!$sessionId || !$userId) {
+        logWebhook('FAILED: Missing sessionId or userId');
+        return false;
+    }
 
     // Check idempotency: if order with this session exists
     $check = $db->prepare("SELECT id FROM orders WHERE stripe_session_id = ?");
@@ -74,20 +121,28 @@ function createOrderFromCheckoutSession($db, $session) {
     $check->execute();
     $res = $check->get_result();
     if ($res->num_rows > 0) {
+        logWebhook('Order already exists for this session (idempotent)');
         return true; // already processed
     }
 
     // Insert order with paid status
     $stmt = $db->prepare("INSERT INTO orders (user_id, total_amount, status, stripe_session_id, address_id, created_at) 
                          VALUES (?, ?, 'paid', ?, ?, NOW())");
+    if (!$stmt) {
+        logWebhook('FAILED: Database prepare error', ['error' => $db->error]);
+        return false;
+    }
+    
     $stmt->bind_param('idsi', $userId, $amountTotal, $sessionId, $addressId);
     
     if ($stmt->execute()) {
-        error_log("[webhook] Order created from checkout session: user=$userId, session=$sessionId, amount=$amountTotal");
+        $orderId = $db->insert_id;
+        logWebhook('Order created successfully', ['orderId' => $orderId, 'userId' => $userId, 'amount' => $amountTotal]);
         return true;
+    } else {
+        logWebhook('FAILED: Order insert error', ['error' => $stmt->error]);
+        return false;
     }
-    error_log("[webhook] Failed to create order from checkout session: " . $stmt->error);
-    return false;
 }
 
 // Helper to create order from invoice (subscription charge)
@@ -247,16 +302,25 @@ function handleRefund($db, $charge) {
 // Handle event types
 $type = $event['type'] ?? '';
 
+logWebhook('Processing event type: ' . $type);
+
 switch ($type) {
     case 'checkout.session.completed':
         // One-time purchase completed
+        logWebhook('Event: checkout.session.completed');
         $session = $event['data']['object'];
         $paymentStatus = $session['payment_status'] ?? null;
         
+        logWebhook('Session payment status', ['status' => $paymentStatus]);
+        
         if ($paymentStatus === 'paid') {
             $ok = createOrderFromCheckoutSession($db, $session);
-            if ($ok) respond(200, 'checkout.session.completed - order created');
+            if ($ok) {
+                logWebhook('checkout.session.completed - order created successfully');
+                respond(200, 'checkout.session.completed - order created');
+            }
         }
+        logWebhook('checkout.session.completed handled');
         respond(200, 'checkout.session.completed handled');
         break;
         

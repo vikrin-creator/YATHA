@@ -9,11 +9,15 @@ require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/config/Database.php';
 
-$stripeCfg = include __DIR__ . '/../src/config/stripe.php';
+// Load Stripe config with error logging
+$stripeConfigPath = __DIR__ . '/../src/config/stripe.php';
+error_log('[subscriptions] Config path: ' . $stripeConfigPath);
+error_log('[subscriptions] Config exists: ' . (file_exists($stripeConfigPath) ? 'YES' : 'NO'));
+
+$stripeCfg = include $stripeConfigPath;
 $stripeSecret = $stripeCfg['secret_key'] ?? '';
-if (!$stripeSecret) {
-    // Do not include keys in repo. Instruct user to set STRIPE_SECRET_KEY in environment.
-}
+error_log('[subscriptions] Secret key loaded: ' . (strlen($stripeSecret) > 0 ? 'YES (' . strlen($stripeSecret) . ' chars)' : 'NO'));
+error_log('[subscriptions] Config keys: ' . json_encode(array_keys($stripeCfg)));
 
 function stripeRequest($method, $path, $params = []) {
     global $stripeSecret;
