@@ -96,16 +96,9 @@ function Profile() {
     }
   }
 
-  // Refresh orders and subscriptions every 3 seconds to catch status updates from admin
-  useEffect(() => {
-    if (isAuthenticated()) {
-      const interval = setInterval(() => {
-        fetchOrders()
-        fetchSubscriptions()
-      }, 3000)
-      return () => clearInterval(interval)
-    }
-  }, [])
+  // Remove automatic polling - only fetch once on mount
+  // Users can manually refresh if needed
+  // This prevents excessive API calls and improves performance significantly
 
   if (loading) {
     return (
@@ -137,6 +130,22 @@ function Profile() {
   return (
     <div className="min-h-screen bg-organic-beige/30 py-6 px-4 md:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
+        {/* Header with Refresh Button */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-[#111518]">My Account</h1>
+          <button
+            onClick={() => {
+              fetchOrders()
+              fetchSubscriptions()
+            }}
+            className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow text-neutral-grey hover:text-primary"
+            title="Refresh data"
+          >
+            <span className="material-symbols-outlined text-lg">refresh</span>
+            Refresh
+          </button>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-4 mb-6 border-b border-neutral-grey/20">
           <button

@@ -10,8 +10,12 @@ function OrderSuccess() {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [retryCount, setRetryCount] = useState(0)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
+  const MAX_RETRIES = 8  // Retry for up to 16 seconds
+  const RETRY_DELAY = 2000  // 2 seconds between retries
 
   useEffect(() => {
     // Check if user is authenticated
@@ -54,19 +58,46 @@ function OrderSuccess() {
 
         if (matchedOrder) {
           setOrder(matchedOrder)
+          setLoading(false)
         } else {
-          setError('Order not found. It may take a few moments to process.')
-          // Retry after 2 seconds
-          setTimeout(() => fetchOrderDetails(sessionId), 2000)
+          // Order not found yet - retry if we haven't exceeded max retries
+          if (retryCount < MAX_RETRIES) {
+            setError(null)
+            setTimeout(() => {
+              setRetryCount(retryCount + 1)
+              fetchOrderDetails(sessionId)
+            }, RETRY_DELAY)
+          } else {
+            // Max retries exceeded
+            setError('Order is taking longer to process. Please check your email for confirmation or contact support.')
+            setLoading(false)
+          }
         }
       } else {
-        setError('Failed to fetch order details')
+        if (retryCount < MAX_RETRIES) {
+          setError(null)
+          setTimeout(() => {
+            setRetryCount(retryCount + 1)
+            fetchOrderDetails(sessionId)
+          }, RETRY_DELAY)
+        } else {
+          setError('Failed to fetch order details after multiple attempts. Please contact support.')
+          setLoading(false)
+        }
       }
     } catch (err) {
       console.error('Error fetching order:', err)
-      setError('Error loading order details: ' + err.message)
-    } finally {
-      setLoading(false)
+      // Retry on error too
+      if (retryCount < MAX_RETRIES) {
+        setError(null)
+        setTimeout(() => {
+          setRetryCount(retryCount + 1)
+          fetchOrderDetails(sessionId)
+        }, RETRY_DELAY)
+      } else {
+        setError('Error loading order details: ' + err.message)
+        setLoading(false)
+      }
     }
   }
 
@@ -78,7 +109,8 @@ function OrderSuccess() {
             hourglass_empty
           </span>
           <h2 className="text-2xl font-bold text-[#111518] mb-2">Processing Your Order</h2>
-          <p className="text-neutral-grey">Please wait while we confirm your payment...</p>
+          <p className="text-neutral-grey mb-2">Please wait while we confirm your payment...</p>
+          <p className="text-xs text-neutral-grey">Attempt {retryCount + 1}/{MAX_RETRIES + 1}</p>
         </div>
       </div>
     )
