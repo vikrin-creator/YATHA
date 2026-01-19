@@ -133,7 +133,7 @@ function Checkout() {
       const token = getToken()
       const basePayload = {
         address_id: selectedAddressId,
-        success_url: window.location.origin + '/',
+        success_url: window.location.origin + '/order-success?session_id={CHECKOUT_SESSION_ID}',
         cancel_url: window.location.href
       }
 

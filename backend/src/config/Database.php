@@ -34,7 +34,10 @@ class Database
 
             $this->conn->set_charset("utf8");
         } catch (Exception $e) {
-            die('Database connection failed: ' . $e->getMessage());
+            // Don't die here - let caller handle the exception
+            // This prevents JSON endpoints from returning HTML errors
+            error_log('Database connection failed: ' . $e->getMessage());
+            throw new Exception('Database connection failed: ' . $e->getMessage());
         }
 
         return $this->conn;
