@@ -1,28 +1,45 @@
 <?php
 
+// Set CORS headers FIRST - before anything else
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Max-Age: 86400');
+
+// Handle preflight OPTIONS request IMMEDIATELY
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 require_once __DIR__ . '/../../src/config/Database.php';
 require_once __DIR__ . '/../../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../src/utils/Response.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
 
-// Verify admin access
-$user = AuthMiddleware::verify();
-$database = new Database();
-$db = $database->connect();
+    // Verify admin access
+    $user = AuthMiddleware::verify();
+    $database = new Database();
+    $db = $database->connect();
 
-// Verify user is admin
-verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
+    if (!$db) {
+        Response::error('Database connection failed', 500);
+    }
 
-if ($method === 'GET') {
-    getAllUsers($db);
-} else {
-    Response::error('Method not allowed', 405);
+    // Verify user is admin
+    verifyAdmin($db, $user['user_id'], $user['role'] ?? null);
+
+    if ($method === 'GET') {
+        getAllUsers($db);
+    } else {
+        Response::error('Method not allowed', 405);
+    }
+} catch (Exception $e) {
+    error_log("Admin users error: " . $e->getMessage());
+    Response::error($e->getMessage(), 500);
 }
 
 function getAllUsers($db)

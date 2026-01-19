@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/auth.css";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 import bg from "../assets/images/LoginSigninBg.png";
 
@@ -35,6 +36,17 @@ export default function AuthPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState("");
+  
+  // OTP verification state
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [registrationData, setRegistrationData] = useState(null);
+  
+  // Forgot password modal state
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -116,13 +128,17 @@ export default function AuthPage() {
 
       const data = await response.json();
 
-      if (data.success && data.data?.token) {
-        // Store token and user data
-        localStorage.setItem("token", data.data.token);
-        localStorage.setItem("user", JSON.stringify(data.data.user));
-        
-        // Redirect to home
-        navigate("/");
+      if (data.success && data.status === "otp_sent") {
+        // OTP sent - show verification modal
+        setOtpEmail(signupEmail);
+        setRegistrationData({
+          name: `${signupFirstName} ${signupLastName}`,
+          email: signupEmail,
+          phone: signupPhone,
+          password: signupPassword,
+        });
+        setShowOTPModal(true);
+        setSignupError("");
       } else {
         setSignupError(data.message || "Signup failed");
       }
@@ -130,6 +146,62 @@ export default function AuthPage() {
       setSignupError("Connection error: " + error.message);
     } finally {
       setSignupLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    setOtpError("");
+    setOtpLoading(true);
+
+    if (!otpCode || otpCode.length !== 6) {
+      setOtpError("Please enter a valid 6-digit OTP");
+      setOtpLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: otpEmail,
+          otp: otpCode,
+          password: registrationData.password,
+          name: registrationData.name,
+          phone: registrationData.phone,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data?.token) {
+        // Store token and user data
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(data.data));
+        
+        // Reset form and close modal
+        setShowOTPModal(false);
+        setOtpCode("");
+        setSignupFirstName("");
+        setSignupLastName("");
+        setSignupEmail("");
+        setSignupPhone("");
+        setSignupPassword("");
+        setSignupConfirmPassword(false);
+        setRegistrationData(null);
+        
+        // Redirect to home
+        navigate("/");
+      } else {
+        setOtpError(data.message || "OTP verification failed");
+      }
+    } catch (error) {
+      setOtpError("Connection error: " + error.message);
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -208,7 +280,14 @@ export default function AuthPage() {
               <label className="checkbox-label">
                 <input type="checkbox" /> Remember me
               </label>
-              <span className="link">Forgot password?</span>
+              <button 
+                type="button"
+                className="link"
+                onClick={() => setShowForgotPasswordModal(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
+              >
+                Forgot password?
+              </button>
             </div>
 
             <button 
@@ -314,6 +393,53 @@ export default function AuthPage() {
 
       {/* Bottom Security Badges */}
       {/* Removed */}
+
+      {/* OTP Verification Modal */}
+      {showOTPModal && (
+        <div className="modal-overlay">
+          <div className="modal-content otp-modal">
+            <div className="modal-header">
+              <h2>Verify Your Email</h2>
+              <button className="close-btn" onClick={() => setShowOTPModal(false)}>×</button>
+            </div>
+            
+            <div className="modal-body">
+              <p>We've sent a 6-digit OTP to <strong>{otpEmail}</strong></p>
+              
+              <form onSubmit={handleVerifyOTP}>
+                {otpError && <div className="error-message">{otpError}</div>}
+                
+                <input 
+                  type="text" 
+                  placeholder="Enter 6-digit OTP"
+                  maxLength="6"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  className="otp-input"
+                  required
+                />
+                
+                <button 
+                  type="submit" 
+                  className="btn-verify"
+                  disabled={otpLoading}
+                >
+                  {otpLoading ? "Verifying..." : "Verify OTP"}
+                </button>
+              </form>
+              
+              <p className="otp-note">OTP expires in 10 minutes</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal 
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        API_BASE_URL={API_BASE_URL}
+      />
     </div>
   );
 }

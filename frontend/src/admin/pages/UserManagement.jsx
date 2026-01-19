@@ -21,14 +21,18 @@ function UserManagement() {
       setError(null)
       
       const token = getToken()
+      console.log('Token from localStorage:', token ? 'Token exists' : 'No token')
+      
       if (!token) {
         setError('Please login to view users')
         setLoading(false)
         return
       }
 
-      console.log('Fetching users from:', `${API_BASE_URL}/api/admin/users`)
-      const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
+      const url = `${API_BASE_URL}/api/admin/users`
+      console.log('Fetching users from:', url)
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -36,8 +40,13 @@ function UserManagement() {
         }
       })
       
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorText = await response.text()
+        console.error('Response error text:', errorText)
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
       }
       
       const result = await response.json()

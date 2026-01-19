@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import HeaderLogo from '../../assets/images/HeaderLogo.png'
 import { isAuthenticated, logout, getCurrentUser } from '../../services/authService'
+import AddressModal from '../AddressModal'
 
 function Navbar() {
   const API_BASE_URL = window.location.hostname === 'localhost' 
@@ -10,6 +11,7 @@ function Navbar() {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [showAddressModal, setShowAddressModal] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState(null)
   const [cartCount, setCartCount] = useState(0)
@@ -289,6 +291,7 @@ function Navbar() {
                           <button 
                             onClick={() => {
                               setIsUserMenuOpen(false)
+                              setShowAddressModal(true)
                             }}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#111518] hover:bg-neutral-grey/10 w-full"
                           >
@@ -298,6 +301,12 @@ function Navbar() {
                           <button 
                             onClick={() => {
                               setIsUserMenuOpen(false)
+                              navigate('/profile')
+                              // Will show orders tab via URL state or component logic
+                              setTimeout(() => {
+                                const event = new CustomEvent('showOrdersTab')
+                                window.dispatchEvent(event)
+                              }, 100)
                             }}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#111518] hover:bg-neutral-grey/10 w-full"
                           >
@@ -418,6 +427,7 @@ function Navbar() {
                     <button 
                       onClick={() => {
                         setIsMobileMenuOpen(false)
+                        setShowAddressModal(true)
                       }}
                       className="flex items-center gap-3 text-[#111518] text-sm font-medium leading-normal hover:text-primary py-2 w-full"
                     >
@@ -468,6 +478,15 @@ function Navbar() {
             </nav>
           </div>
         )}
+
+        {/* Address Modal (opened from profile dropdown) */}
+        <AddressModal
+          isOpen={showAddressModal}
+          onClose={() => setShowAddressModal(false)}
+          onAddressSaved={() => {
+            setShowAddressModal(false)
+          }}
+        />
 
         {/* Mobile Search Modal */}
         {isMobileSearchOpen && (

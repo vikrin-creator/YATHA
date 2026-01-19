@@ -1,0 +1,196 @@
+<?php
+
+header('Content-Type: application/json');
+
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
+// Set up error handler to catch all errors as JSON responses
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("[checkout] PHP Error ({$errno}): {$errstr} in {$errfile}:{$errline}");
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => 'Server error: ' . $errstr,
+        'file' => basename($errfile),
+        'line' => $errline,
+        'debug' => true
+    ]);
+    exit;
+}, E_ALL);
+
+// Set up exception handler
+set_exception_handler(function(Throwable $e) {
+    error_log("[checkout] Exception: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => 'Server error: ' . $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine(),
+        'debug' => true
+    ]);
+    exit;
+});
+
+require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../src/utils/Response.php';
+require_once __DIR__ . '/../src/config/Database.php';
+
+error_log('[checkout] Loading Stripe config...');
+$stripeCfg = include __DIR__ . '/../src/config/stripe.php';
+$stripeSecret = $stripeCfg['secret_key'] ?? '';
+error_log('[checkout] Stripe secret loaded: ' . (strlen($stripeSecret) > 0 ? 'YES (' . strlen($stripeSecret) . ' chars)' : 'NO'));
+
+if (!$stripeSecret) {
+    error_log('[checkout] ERROR: Stripe secret key not configured');
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'status' => 'error',
+        'message' => 'Stripe not configured on server. Set STRIPE_SECRET_KEY in backend/.env'
+    ]);
+    exit;
+}
+
+// Log incoming request for debugging
+$raw = @file_get_contents('php://input');
+error_log('[checkout] REQUEST ' . $_SERVER['REQUEST_METHOD'] . ' ' . ($_SERVER['REQUEST_URI'] ?? '') );
+if (function_exists('getallheaders')) {
+    error_log('[checkout] HEADERS: ' . json_encode(getallheaders()));
+}
+error_log('[checkout] BODY: ' . substr($raw, 0, 2000));
+
+// Register shutdown function to catch fatal errors
+register_shutdown_function(function() {
+    $err = error_get_last();
+    if ($err) {
+        error_log('[checkout] SHUTDOWN error: ' . json_encode($err));
+    }
+});
+
+function stripeRequest($method, $path, $params = []) {
+    global $stripeSecret;
+    $url = 'https://api.stripe.com' . $path;
+    
+    error_log("[checkout] stripeRequest to $url with method: $method");
+    error_log("[checkout] params: " . json_encode($params));
+    
+    // Use file_get_contents with stream context (works without curl extension)
+    $postData = http_build_query($params);
+    
+    $auth = base64_encode($stripeSecret . ':');
+    
+    $contextOptions = [
+        'http' => [
+            'method' => strtoupper($method),
+            'header' => [
+                'Authorization: Basic ' . $auth,
+                'Content-Type: application/x-www-form-urlencoded',
+                'User-Agent: Yatha/1.0'
+            ],
+            'content' => (strtoupper($method) === 'POST') ? $postData : null,
+            'timeout' => 30
+        ],
+        'ssl' => [
+            'verify_peer' => true,
+            'verify_peer_name' => true
+        ]
+    ];
+    
+    $context = stream_context_create($contextOptions);
+    
+    try {
+        $response = file_get_contents($url, false, $context);
+        
+        // Get response headers to check status code
+        if (isset($http_response_header)) {
+            preg_match('/HTTP\/\d+\.\d+ (\d+)/', $http_response_header[0], $matches);
+            $status = intval($matches[1] ?? 200);
+        } else {
+            $status = 200;
+        }
+        
+        error_log('[checkout] stripe response status: ' . $status . ' body: ' . substr($response, 0, 2000));
+        
+        return ['status' => $status, 'body' => json_decode($response, true)];
+    } catch (Exception $e) {
+        error_log('[checkout] stream error: ' . $e->getMessage());
+        throw new Exception('Stripe request failed: ' . $e->getMessage());
+    }
+}
+
+try {
+    $method = $_SERVER['REQUEST_METHOD'];
+    $input = json_decode(file_get_contents('php://input'), true) ?: [];
+
+    $user = AuthMiddleware::verify();
+    $database = new Database();
+    $db = $database->connect();
+
+    if (!$db) Response::error('DB connection failed', 500);
+
+    if ($method === 'POST') {
+        // Expected: { items: [...], total: number (decimal), address_id, success_url, cancel_url }
+        $items = $input['items'] ?? [];
+        $total = isset($input['total']) ? floatval($input['total']) : null;
+        $addressId = $input['address_id'] ?? null;
+        $successUrl = $input['success_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '') . '/';
+        $cancelUrl = $input['cancel_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '') . '/checkout';
+
+        if ($total === null) {
+            Response::validationError(['message' => 'total amount is required']);
+        }
+
+        if (!$stripeSecret) {
+            Response::error('Stripe not configured on server. Set STRIPE_SECRET_KEY.', 500);
+        }
+
+        // Build line item for the total. Using price_data for one-off payment
+        $amountCents = intval(round($total * 100));
+
+        $params = [
+            'payment_method_types[]' => 'card',
+            'mode' => 'payment',
+            'success_url' => $successUrl,
+            'cancel_url' => $cancelUrl,
+            // single line item representing the total amount
+            'line_items[0][price_data][currency]' => 'usd',
+            'line_items[0][price_data][product_data][name]' => 'Order from Yatha',
+            'line_items[0][price_data][unit_amount]' => $amountCents,
+            'line_items[0][quantity]' => 1,
+            // attach metadata
+            "metadata[user_id]" => $user['user_id']
+        ];
+
+        if ($addressId) $params["metadata[address_id]"] = $addressId;
+        // Attach a minimal items JSON in metadata if present (avoid too large)
+        if (!empty($items)) $params["metadata[items]"] = json_encode(array_slice($items,0,10));
+
+        $sessionResp = stripeRequest('POST', '/v1/checkout/sessions', $params);
+        if ($sessionResp['status'] >= 400) {
+            // include Stripe error details in response for easier debugging (dev only)
+            $errMsg = 'Failed to create Stripe Checkout Session';
+            if (is_array($sessionResp['body']) && isset($sessionResp['body']['error']['message'])) {
+                $errMsg = $sessionResp['body']['error']['message'];
+            }
+            Response::error($errMsg, 500, $sessionResp['body'] ?? []);
+        }
+
+        echo json_encode([
+            'success' => true,
+            'status' => 'created',
+            'data' => ['session' => $sessionResp['body']]
+        ]);
+        http_response_code(201);
+        exit;
+    } else {
+        Response::error('Method not allowed', 405);
+    }
+} catch (Exception $e) {
+    Response::error($e->getMessage(), 500);
+}
+
+?>

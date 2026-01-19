@@ -50,6 +50,55 @@ export const logout = () => {
 };
 
 /**
+ * Request password reset - sends OTP to email
+ */
+export const requestPasswordReset = async (email) => {
+    try {
+        const response = await apiClient.post('/auth/forgot-password', { email });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Reset password with OTP verification
+ */
+export const resetPassword = async (email, otp, newPassword) => {
+    try {
+        const response = await apiClient.post('/auth/reset-password', {
+            email,
+            otp,
+            new_password: newPassword
+        });
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
+ * Verify OTP after registration
+ */
+export const verifyOTP = async (email, otp) => {
+    try {
+        const response = await apiClient.post('/auth/verify-otp', { email, otp });
+        
+        if (response.success && response.data?.token) {
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user', JSON.stringify({
+                id: response.data.user_id,
+                email: response.data.email
+            }));
+        }
+        
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+/**
  * Get current user from localStorage
  */
 export const getCurrentUser = () => {
@@ -74,6 +123,9 @@ export const getToken = () => {
 export default {
     login,
     signup,
+    requestPasswordReset,
+    resetPassword,
+    verifyOTP,
     logout,
     getCurrentUser,
     isAuthenticated,

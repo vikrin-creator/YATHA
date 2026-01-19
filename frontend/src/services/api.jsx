@@ -34,10 +34,23 @@ class ApiClient {
                 headers,
             });
 
-            const data = await response.json();
+            // Handle empty responses
+            const contentType = response.headers.get('content-type');
+            let data = null;
+
+            if (contentType && contentType.includes('application/json')) {
+                const text = await response.text();
+                if (text) {
+                    data = JSON.parse(text);
+                } else {
+                    data = { success: response.ok, message: 'Empty response' };
+                }
+            } else {
+                data = { success: response.ok, message: 'Non-JSON response' };
+            }
 
             if (!response.ok) {
-                throw new Error(data.message || 'Request failed');
+                throw new Error(data?.message || 'Request failed');
             }
 
             return data;

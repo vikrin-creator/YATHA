@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { isAuthenticated, getCurrentUser } from '../services/authService'
+import { isAuthenticated, getCurrentUser, getToken } from '../services/authService'
 
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? "http://localhost:8000" 
@@ -22,12 +22,11 @@ function Checkout() {
     city: '',
     state: '',
     zipCode: '',
-    country: 'India',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
+    country: '',
     agreeTerms: false
   })
+  const [addresses, setAddresses] = useState([])
+  const [selectedAddressId, setSelectedAddressId] = useState(null)
 
   useEffect(() => {
     // Auto-scroll to top
@@ -50,6 +49,8 @@ function Checkout() {
         email: currentUser.email || '',
         phone: currentUser.phone || ''
       }))
+      // fetch saved addresses for logged in user
+      fetchAddresses()
     }
 
     // Load cart items
@@ -63,6 +64,40 @@ function Checkout() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
+  }
+
+  const fetchAddresses = async () => {
+    try {
+      const token = getToken()
+      if (!token) return
+      const res = await fetch(`${API_BASE_URL}/api/addresses`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.success) {
+        setAddresses(data.data || [])
+        // pick default address if present
+        const def = (data.data || []).find(a => a.is_default === 1 || a.is_default === true)
+        if (def) {
+          setSelectedAddressId(def.id)
+          setFormData(prev => ({
+            ...prev,
+            firstName: def.full_name?.split(' ')[0] || prev.firstName,
+            lastName: def.full_name?.split(' ')[1] || prev.lastName,
+            phone: def.phone || prev.phone,
+            address: def.address_line_1 + (def.address_line_2 ? (', ' + def.address_line_2) : ''),
+            city: def.city || prev.city,
+            state: def.state || prev.state,
+            zipCode: def.pincode || prev.zipCode,
+            country: def.country || prev.country
+          }))
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching addresses:', err)
+    }
   }
 
   const calculateSubtotal = () => {
@@ -82,49 +117,65 @@ function Checkout() {
       return
     }
 
+    // Separate items by purchase type
+    const subscriptionItems = cartItems.filter(item => item.purchaseType === 'subscribe')
+    const onetimeItems = cartItems.filter(item => item.purchaseType !== 'subscribe')
+
+    // Validate - cannot mix subscription and one-time purchases in same checkout
+    if (subscriptionItems.length > 0 && onetimeItems.length > 0) {
+      alert('Please checkout subscriptions and one-time purchases separately. Remove either subscription or one-time items and try again.')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Create order
-      const orderData = {
-        user_id: user.id,
-        customer_name: `${formData.firstName} ${formData.lastName}`,
-        customer_email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zip_code: formData.zipCode,
-        country: formData.country,
-        subtotal: subtotal,
-        tax: tax,
-        shipping: shipping,
-        total: total,
-        items: cartItems,
-        payment_method: 'credit_card',
-        status: 'pending'
+      const token = getToken()
+      const basePayload = {
+        address_id: selectedAddressId,
+        success_url: window.location.origin + '/',
+        cancel_url: window.location.href
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+      let endpoint = ''
+      let payload = {}
+
+      // Route to appropriate endpoint based on purchase type
+      if (subscriptionItems.length > 0) {
+        // Handle subscription items
+        endpoint = `${API_BASE_URL}/api/subscriptions`
+        payload = {
+          ...basePayload,
+          items: subscriptionItems,
+          total: total
+        }
+      } else {
+        // Handle one-time purchase items
+        endpoint = `${API_BASE_URL}/api/checkout`
+        payload = {
+          ...basePayload,
+          items: onetimeItems,
+          total: total
+        }
+      }
+
+      const resp = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
       })
 
-      const data = await response.json()
-
-      if (data.success) {
-        setOrderPlaced(true)
-        // Clear cart
-        localStorage.removeItem('cart')
-        window.dispatchEvent(new Event('cartUpdated'))
-        
-        // Show success message
-        setTimeout(() => {
-          navigate('/')
-        }, 3000)
+      const data = await resp.json()
+      if (resp.ok && data.success && data.data && data.data.session && data.data.session.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.data.session.url
+        return
       } else {
-        alert(data.message || 'Failed to place order')
+        console.error('Failed to create checkout session', data)
+        alert(data.message || 'Failed to start payment session')
       }
     } catch (error) {
       console.error('Error placing order:', error)
@@ -185,7 +236,59 @@ function Checkout() {
             <form onSubmit={handlePlaceOrder} className="space-y-6">
               {/* Shipping Information */}
               <div className="bg-white p-4 md:p-5 rounded-lg shadow-sm">
-                <h2 className="text-lg font-bold text-[#111518] mb-3">Shipping Information</h2>
+                    <h2 className="text-lg font-bold text-[#111518] mb-3">Shipping Information</h2>
+
+                    {/* Saved addresses selector */}
+                    {addresses.length > 0 && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Use saved address</label>
+                        <div className="space-y-2">
+                          {addresses.map(addr => (
+                            <label key={addr.id} className="flex items-center gap-3 p-2 border rounded-lg">
+                              <input
+                                type="radio"
+                                name="savedAddress"
+                                checked={selectedAddressId === addr.id}
+                                onClick={() => {
+                                  // allow toggling off the selected radio to use a different address
+                                  if (selectedAddressId === addr.id) {
+                                    setSelectedAddressId(null)
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      address: '',
+                                      city: '',
+                                      state: '',
+                                      zipCode: '',
+                                      country: ''
+                                    }))
+                                  }
+                                }}
+                                onChange={() => {
+                                  setSelectedAddressId(addr.id)
+                                  // populate form with selected address
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    firstName: addr.full_name?.split(' ')[0] || prev.firstName,
+                                    lastName: addr.full_name?.split(' ')[1] || prev.lastName,
+                                    phone: addr.phone || prev.phone,
+                                    address: addr.address_line_1 + (addr.address_line_2 ? (', ' + addr.address_line_2) : ''),
+                                    city: addr.city || prev.city,
+                                    state: addr.state || prev.state,
+                                    zipCode: addr.pincode || prev.zipCode,
+                                    country: addr.country || prev.country
+                                  }))
+                                }}
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium text-[#111518]">{addr.name} {addr.is_default === 1 && <span className="text-xs text-primary">(Default)</span>}</div>
+                                <div className="text-sm text-neutral-grey">{addr.address_line_1}{addr.address_line_2 ? `, ${addr.address_line_2}` : ''}</div>
+                                <div className="text-sm text-neutral-grey">{addr.city}, {addr.state} - {addr.pincode}</div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                 
                 <div className="grid md:grid-cols-2 gap-3 mb-3">
                   <div>
@@ -299,50 +402,7 @@ function Checkout() {
                 </div>
               </div>
 
-              {/* Payment Information */}
-              <div className="bg-white p-4 md:p-5 rounded-lg shadow-sm">
-                <h2 className="text-lg font-bold text-[#111518] mb-3">Payment Information</h2>
-                
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Card Number</label>
-                  <input
-                    type="text"
-                    name="cardNumber"
-                    placeholder="1234 5678 9012 3456"
-                    value={formData.cardNumber}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent"
-                  />
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
-                    <input
-                      type="text"
-                      name="expiryDate"
-                      placeholder="MM/YY"
-                      value={formData.expiryDate}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">CVV</label>
-                    <input
-                      type="text"
-                      name="cvv"
-                      placeholder="123"
-                      value={formData.cvv}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moringa-green focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* Payment handled externally — section removed */}
 
               {/* Terms and Conditions */}
               <div className="bg-white p-4 md:p-5 rounded-lg shadow-sm">

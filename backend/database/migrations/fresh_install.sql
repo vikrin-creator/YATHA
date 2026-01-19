@@ -1,14 +1,31 @@
 
--- Create users table
+-- Create users table with email verification
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
     role ENUM('user', 'admin') DEFAULT 'user',
+    email_verified TINYINT DEFAULT 0,
+    email_verified_at DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) AUTO_INCREMENT = 1;
+
+-- Create OTP verification table
+CREATE TABLE otp_verification (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(100) NOT NULL,
+    otp_code VARCHAR(6) NOT NULL,
+    verified TINYINT DEFAULT 0,
+    attempts INT DEFAULT 0,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_otp_code (otp_code),
+    INDEX idx_expires_at (expires_at)
+);
 
 -- Create products table
 CREATE TABLE products (
