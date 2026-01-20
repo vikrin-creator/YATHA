@@ -248,40 +248,23 @@ function updateSubscriptionRecord($db, $subscription) {
     $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
     $productId = isset($metadata['product_id']) ? intval($metadata['product_id']) : null;
     
-    global $logFile;
     error_log('[webhook-subscription] Processing subscription: ' . $subId);
-    error_log('[webhook-subscription] Subscription metadata: ' . json_encode($metadata));
+    error_log('[webhook-subscription] User ID: ' . ($userId ?? 'NULL') . ', Product ID: ' . ($productId ?? 'NULL'));
+    error_log('[webhook-subscription] Customer ID: ' . $customerId);
     
-    // If metadata is empty on subscription, fetch from customer object
-    if (empty($metadata) && $customerId) {
-        error_log('[webhook-subscription] Metadata missing on subscription, fetching from customer: ' . $customerId);
-        $stripeCfg = include __DIR__ . '/../../src/config/stripe.php';
-        $stripeKey = $stripeCfg['secret_key'] ?? getenv('STRIPE_SECRET_KEY');
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/customers/' . urlencode($customerId));
-        curl_setopt($ch, CURLOPT_USERPWD, $stripeKey . ':');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $customerResponse = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode === 200) {
-            $customer = json_decode($customerResponse, true);
-            $metadata = $customer['metadata'] ?? [];
-            $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
-            $productId = isset($metadata['product_id']) ? intval($metadata['product_id']) : null;
-            error_log('[webhook-subscription] Customer metadata fetched: ' . json_encode($metadata));
-        } else {
-            error_log('[webhook-subscription] Failed to fetch customer metadata (HTTP ' . $httpCode . ')');
-        }
+    // If we don't have user_id, we can't create the record
+    // This happens when metadata isn't set on the subscription
+    // For now, just log and return success to prevent Stripe retries
+    if (!$subId) {
+        error_log('[webhook-subscription] ERROR: Missing subscription ID');
+        return false;
     }
     
-    error_log('[webhook-subscription] User ID: ' . $userId . ', Product ID: ' . $productId);
-    
-    if (!$subId || !$userId) {
-        error_log('[webhook-subscription] ERROR: Missing required fields - subId: ' . $subId . ', userId: ' . $userId);
-        return false;
+    if (!$userId) {
+        error_log('[webhook-subscription] WARNING: Missing user_id in subscription metadata. Subscription ID: ' . $subId);
+        error_log('[webhook-subscription] This subscription will need to be created manually or via metadata update');
+        // Return true to prevent Stripe from retrying
+        return true;
     }
     
     $currentPeriodStart = isset($subscription['current_period_start']) ? 
@@ -442,42 +425,19 @@ switch ($type) {
         // Subscription cancelled
         $subscription = $event['data']['object'];
         $subId = $subscription['id'] ?? null;
-        $customerId = $subscription['customer'] ?? null;
-        
-        // Get user_id from subscription metadata or customer
         $metadata = $subscription['metadata'] ?? [];
         $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
         
-        // If metadata missing on subscription, fetch from customer
-        if (!$userId && $customerId) {
-            error_log('[webhook-subscription-deleted] Metadata missing, fetching from customer: ' . $customerId);
-            $stripeCfg = include __DIR__ . '/../../src/config/stripe.php';
-            $stripeKey = $stripeCfg['secret_key'] ?? getenv('STRIPE_SECRET_KEY');
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/customers/' . urlencode($customerId));
-            curl_setopt($ch, CURLOPT_USERPWD, $stripeKey . ':');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            $customerResponse = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($httpCode === 200) {
-                $customer = json_decode($customerResponse, true);
-                $metadata = $customer['metadata'] ?? [];
-                $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
-                error_log('[webhook-subscription-deleted] Customer metadata fetched: user_id=' . $userId);
-            }
-        }
+        error_log('[webhook-subscription-deleted] Cancelling subscription: ' . $subId . ', user_id: ' . ($userId ?? 'NULL'));
         
         if ($subId && $userId) {
             $stmt = $db->prepare("UPDATE subscriptions SET status = 'cancelled', updated_at = NOW() 
                                  WHERE stripe_subscription_id = ? AND user_id = ?");
             $stmt->bind_param('si', $subId, $userId);
             $stmt->execute();
-            error_log('[webhook-subscription-deleted] Marked subscription ' . $subId . ' as cancelled for user ' . $userId);
+            error_log('[webhook-subscription-deleted] SUCCESS: Marked subscription ' . $subId . ' as cancelled');
         } else {
-            error_log('[webhook-subscription-deleted] Cannot cancel - missing subId or userId');
+            error_log('[webhook-subscription-deleted] WARNING: Cannot cancel - subId: ' . $subId . ', userId: ' . ($userId ?? 'NULL'));
         }
         respond(200, 'customer.subscription.deleted - subscription cancelled');
         break;

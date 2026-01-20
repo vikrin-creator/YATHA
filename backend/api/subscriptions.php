@@ -225,7 +225,10 @@ try {
             'line_items[0][price_data][recurring][interval]' => 'month',
             'line_items[0][price_data][unit_amount]' => $amountCents,
             'line_items[0][quantity]' => 1,
-            // attach metadata at session level for webhook compatibility
+            // Metadata at line_item level - flows to subscription
+            'line_items[0][metadata][user_id]' => $user['user_id'],
+            'line_items[0][metadata][subscription_type]' => 'recurring',
+            // Also attach metadata at session level for webhook compatibility
             "metadata[user_id]" => $user['user_id'],
             "metadata[subscription_type]" => 'recurring'
         ];
@@ -234,6 +237,7 @@ try {
         if (!empty($items) && isset($items[0]['id'])) {
             $productId = intval($items[0]['id']);
             $params["metadata[product_id]"] = $productId;
+            $params["line_items[0][metadata][product_id]"] = $productId;
         }
 
         if ($addressId) $params["metadata[address_id]"] = $addressId;
