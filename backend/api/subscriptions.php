@@ -190,11 +190,12 @@ try {
         $stripeCustomerId = $userRow['stripe_customer_id'] ?? null;
 
         if (!$stripeCustomerId) {
-            // create customer
+            // create customer with metadata
             $custParams = [
                 'email' => $userRow['email'] ?? null,
                 'name' => $userRow['name'] ?? null,
-                'metadata[user_id]' => $user['user_id']
+                'metadata[user_id]' => $user['user_id'],
+                'metadata[product_id]' => isset($items[0]['id']) ? intval($items[0]['id']) : null
             ];
 
             $custResp = stripeRequest('POST', '/v1/customers', $custParams);

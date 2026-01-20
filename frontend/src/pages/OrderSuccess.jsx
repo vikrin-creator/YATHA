@@ -65,27 +65,33 @@ function OrderSuccess() {
       
       console.log(`[OrderSuccess] Fetching order for session: ${sessionId} (attempt ${retryCount + 1}/${MAX_RETRIES})`)
       
-      // First, try to get Stripe session details to fetch order data
-      const sessionResponse = await fetch(`${API_BASE_URL}/api/stripe-webhook-fallback`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ session_id: sessionId })
-      }).catch(() => null)
+      // In development/localhost: use fallback webhook to create order immediately
+      // In production: rely on Stripe webhook which is already processing
+      const isLocalhost = window.location.hostname === 'localhost'
+      
+      if (isLocalhost) {
+        // Local development: call fallback webhook to create order
+        const sessionResponse = await fetch(`${API_BASE_URL}/api/stripe-webhook-fallback`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ session_id: sessionId })
+        }).catch(() => null)
 
-      // If fallback succeeded, use that order
-      if (sessionResponse && sessionResponse.ok) {
-        const fallbackData = await sessionResponse.json()
-        if (fallbackData.success && fallbackData.data) {
-          setOrder(fallbackData.data)
-          setLoading(false)
-          return
+        // If fallback succeeded, use that order
+        if (sessionResponse && sessionResponse.ok) {
+          const fallbackData = await sessionResponse.json()
+          if (fallbackData.success && fallbackData.data) {
+            setOrder(fallbackData.data)
+            setLoading(false)
+            return
+          }
         }
       }
 
-      // Query orders by stripe_session_id
+      // Query orders by stripe_session_id (works for both local and production)
       const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'GET',
         headers: {

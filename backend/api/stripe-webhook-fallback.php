@@ -207,7 +207,7 @@ try {
         }
         
         $insertStmt->bind_param(
-            'idsssi',
+            'idsiss',
             $user['user_id'],
             $amountTotal,
             $status,
