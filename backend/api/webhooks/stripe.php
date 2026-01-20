@@ -286,7 +286,7 @@ function updateSubscriptionRecord($db, $subscription) {
             error_log('[webhook-subscription] Prepare error: ' . $db->error);
             return false;
         }
-        $stmt->bind_param('sssisss', $status, $currentPeriodStart, $currentPeriodEnd, $nextBillingDate, $productId, $subId);
+        $stmt->bind_param('ssssiss', $status, $currentPeriodStart, $currentPeriodEnd, $nextBillingDate, $productId, $subId);
     } else {
         // Create new subscription record
         error_log('[webhook-subscription] Creating new subscription');
@@ -365,16 +365,17 @@ switch ($type) {
         logWebhook('Session details', ['payment_status' => $paymentStatus, 'mode' => $sessionMode]);
         
         if ($paymentStatus === 'paid') {
+            // Create order for BOTH payment and subscription modes
+            $ok = createOrderFromCheckoutSession($db, $session);
+            if ($ok) {
+                logWebhook('checkout.session.completed - order created successfully');
+            } else {
+                logWebhook('checkout.session.completed - failed to create order');
+            }
+            
             if ($sessionMode === 'subscription') {
                 // For subscription mode - subscription will be created by customer.subscription.created event
-                // Just log it for now
-                logWebhook('checkout.session.completed - subscription mode session, subscription will be created by customer.subscription.created event');
-            } else {
-                // For payment mode - create order
-                $ok = createOrderFromCheckoutSession($db, $session);
-                if ($ok) {
-                    logWebhook('checkout.session.completed - order created successfully');
-                }
+                logWebhook('checkout.session.completed - subscription mode detected, subscription will be created by customer.subscription.created event');
             }
         }
         logWebhook('checkout.session.completed handled');
