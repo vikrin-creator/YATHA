@@ -246,6 +246,7 @@ function updateSubscriptionRecord($db, $subscription) {
     $status = $subscription['status'] ?? 'active';
     $metadata = $subscription['metadata'] ?? [];
     $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
+    $productId = isset($metadata['product_id']) ? intval($metadata['product_id']) : null;
     
     if (!$subId || !$userId) return false;
     
@@ -266,16 +267,16 @@ function updateSubscriptionRecord($db, $subscription) {
         // Update existing subscription
         $stmt = $db->prepare("UPDATE subscriptions 
                             SET status = ?, current_period_start = ?, current_period_end = ?, 
-                                next_billing_date = ?, updated_at = NOW() 
+                                next_billing_date = ?, product_id = ?, updated_at = NOW() 
                             WHERE stripe_subscription_id = ?");
-        $stmt->bind_param('sssss', $status, $currentPeriodStart, $currentPeriodEnd, $nextBillingDate, $subId);
+        $stmt->bind_param('ssssss', $status, $currentPeriodStart, $currentPeriodEnd, $nextBillingDate, $productId, $subId);
     } else {
         // Create new subscription record
         $stmt = $db->prepare("INSERT INTO subscriptions 
-                            (user_id, stripe_subscription_id, stripe_customer_id, status, 
+                            (user_id, stripe_subscription_id, stripe_customer_id, product_id, status, 
                              current_period_start, current_period_end, next_billing_date, created_at, updated_at) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
-        $stmt->bind_param('issssss', $userId, $subId, $customerId, $status, 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+        $stmt->bind_param('isssisss', $userId, $subId, $customerId, $productId, $status, 
                          $currentPeriodStart, $currentPeriodEnd, $nextBillingDate);
     }
     

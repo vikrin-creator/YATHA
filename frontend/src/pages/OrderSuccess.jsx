@@ -33,9 +33,24 @@ function OrderSuccess() {
       return
     }
 
+    // Reset retry count when starting fresh
+    setRetryCount(0)
     // Fetch order details using session ID
     fetchOrderDetails(sessionId)
   }, [searchParams, navigate])
+
+  // Separate useEffect for retry mechanism
+  useEffect(() => {
+    if (retryCount > 0) {
+      const sessionId = searchParams.get('session_id')
+      if (sessionId) {
+        const timer = setTimeout(() => {
+          fetchOrderDetails(sessionId)
+        }, RETRY_DELAY)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [retryCount, searchParams])
 
   const fetchOrderDetails = async (sessionId) => {
     try {
@@ -48,6 +63,28 @@ function OrderSuccess() {
         return
       }
       
+      console.log(`[OrderSuccess] Fetching order for session: ${sessionId} (attempt ${retryCount + 1}/${MAX_RETRIES})`)
+      
+      // First, try to get Stripe session details to fetch order data
+      const sessionResponse = await fetch(`${API_BASE_URL}/api/stripe-webhook-fallback`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ session_id: sessionId })
+      }).catch(() => null)
+
+      // If fallback succeeded, use that order
+      if (sessionResponse && sessionResponse.ok) {
+        const fallbackData = await sessionResponse.json()
+        if (fallbackData.success && fallbackData.data) {
+          setOrder(fallbackData.data)
+          setLoading(false)
+          return
+        }
+      }
+
       // Query orders by stripe_session_id
       const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'GET',
@@ -70,10 +107,7 @@ function OrderSuccess() {
           // Order not found yet - retry if we haven't exceeded max retries
           if (retryCount < MAX_RETRIES) {
             setError(null)
-            setTimeout(() => {
-              setRetryCount(retryCount + 1)
-              fetchOrderDetails(sessionId)
-            }, RETRY_DELAY)
+            setRetryCount(prev => prev + 1)
           } else {
             // Max retries exceeded
             setError('Order is taking longer to process. Please check your email for confirmation or contact support.')
@@ -83,10 +117,7 @@ function OrderSuccess() {
       } else {
         if (retryCount < MAX_RETRIES) {
           setError(null)
-          setTimeout(() => {
-            setRetryCount(retryCount + 1)
-            fetchOrderDetails(sessionId)
-          }, RETRY_DELAY)
+          setRetryCount(prev => prev + 1)
         } else {
           setError('Failed to fetch order details after multiple attempts. Please contact support.')
           setLoading(false)
@@ -97,10 +128,7 @@ function OrderSuccess() {
       // Retry on error too
       if (retryCount < MAX_RETRIES) {
         setError(null)
-        setTimeout(() => {
-          setRetryCount(retryCount + 1)
-          fetchOrderDetails(sessionId)
-        }, RETRY_DELAY)
+        setRetryCount(prev => prev + 1)
       } else {
         setError('Error loading order details: ' + err.message)
         setLoading(false)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getCurrentUser, isAuthenticated, getToken } from '../services/authService'
 import apiClient from '../services/api'
 import SubscriptionCard from '../components/SubscriptionCard'
@@ -16,6 +16,15 @@ function Profile() {
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('profile')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    // Check URL for tab parameter
+    const tabParam = searchParams.get('tab')
+    if (tabParam) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     // Check if user is authenticated
@@ -161,6 +170,7 @@ function Profile() {
           </button>
           <button
             onClick={() => setActiveTab('orders')}
+            data-tab="orders"
             className={`px-4 py-3 font-semibold text-sm transition-colors ${
               activeTab === 'orders'
                 ? 'text-primary border-b-2 border-primary'
@@ -178,7 +188,7 @@ function Profile() {
                 : 'text-neutral-grey hover:text-[#111518]'
             }`}
           >
-            My Subscriptions ({subscriptions.length})
+            My Subscriptions
           </button>
         </div>
 

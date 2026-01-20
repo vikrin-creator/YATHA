@@ -153,7 +153,8 @@ try {
         $items = $input['items'] ?? [];
         $total = isset($input['total']) ? floatval($input['total']) : null;
         $addressId = $input['address_id'] ?? null;
-        $successUrl = $input['success_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '') . '/';
+        $baseUrl = $input['success_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '');
+        $successUrl = $baseUrl . (strpos($baseUrl, '?') ? '&' : '?') . 'session_id={CHECKOUT_SESSION_ID}';
         $cancelUrl = $input['cancel_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '') . '/checkout';
 
         if ($total === null) {
@@ -214,6 +215,10 @@ try {
         Response::error('Method not allowed', 405);
     }
 } catch (Exception $e) {
+    error_log('[checkout] ERROR: ' . $e->getMessage());
+    // Debug: Log authentication failure
+    $debugLog = __DIR__ . '/../checkout-debug.log';
+    file_put_contents($debugLog, '[' . date('Y-m-d H:i:s') . '] ERROR: ' . $e->getMessage() . PHP_EOL, FILE_APPEND | LOCK_EX);
     Response::error($e->getMessage(), 500);
 }
 

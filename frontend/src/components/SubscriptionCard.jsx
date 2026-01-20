@@ -91,7 +91,7 @@ function SubscriptionCard({ subscription, onCanceled }) {
           <div>
             <p className="text-xs text-neutral-grey mb-1">Price</p>
             <p className="font-semibold text-[#111518]">
-              ${parseFloat(subscription.price).toFixed(2)}/{formatInterval(subscription.billing_interval, subscription.billing_interval_count)}
+              ${parseFloat(subscription.price).toFixed(2)}/month
             </p>
           </div>
           <div>

@@ -134,6 +134,9 @@ switch ($route) {
     case 'subscriptions':
         require_once __DIR__ . '/subscriptions.php';
         break;
+    case 'stripe-webhook-fallback':
+        require_once __DIR__ . '/stripe-webhook-fallback.php';
+        break;
     case 'webhooks':
         // Route webhooks like /api/webhooks/stripe
         switch ($subroute) {

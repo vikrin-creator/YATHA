@@ -301,17 +301,22 @@ function Navbar() {
                           <button 
                             onClick={() => {
                               setIsUserMenuOpen(false)
-                              navigate('/profile')
-                              // Will show orders tab via URL state or component logic
-                              setTimeout(() => {
-                                const event = new CustomEvent('showOrdersTab')
-                                window.dispatchEvent(event)
-                              }, 100)
+                              navigate('/profile?tab=orders')
                             }}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#111518] hover:bg-neutral-grey/10 w-full"
                           >
                             <span className="material-symbols-outlined text-lg">shopping_bag</span>
                             My Orders
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setIsUserMenuOpen(false)
+                              navigate('/profile?tab=subscriptions')
+                            }}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#111518] hover:bg-neutral-grey/10 w-full"
+                          >
+                            <span className="material-symbols-outlined text-lg">card_subscription</span>
+                            My Subscriptions
                           </button>
                           <button 
                             onClick={() => {
@@ -437,11 +442,22 @@ function Navbar() {
                     <button 
                       onClick={() => {
                         setIsMobileMenuOpen(false)
+                        navigate('/profile?tab=orders')
                       }}
                       className="flex items-center gap-3 text-[#111518] text-sm font-medium leading-normal hover:text-primary py-2 w-full"
                     >
                       <span className="material-symbols-outlined text-lg">shopping_bag</span>
                       My Orders
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setIsMobileMenuOpen(false)
+                        navigate('/profile?tab=subscriptions')
+                      }}
+                      className="flex items-center gap-3 text-[#111518] text-sm font-medium leading-normal hover:text-primary py-2 w-full"
+                    >
+                      <span className="material-symbols-outlined text-lg">subscriptions</span>
+                      My Subscriptions
                     </button>
                     <button 
                       onClick={() => {
