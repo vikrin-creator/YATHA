@@ -513,12 +513,20 @@ try {
         respond(200, 'event ignored');
     }
 } catch (Throwable $e) {
-    logWebhook('FATAL ERROR in webhook handler: ' . $e->getMessage(), [
+    $errorMessage = 'FATAL ERROR in webhook handler';
+    $errorDetails = [
+        'message' => $e->getMessage(),
         'file' => $e->getFile(),
         'line' => $e->getLine(),
         'code' => $e->getCode(),
-        'event_type' => $type
-    ]);
+        'event_type' => $type ?? 'unknown',
+        'trace' => $e->getTraceAsString()
+    ];
+    
+    error_log($errorMessage);
+    error_log(json_encode($errorDetails));
+    logWebhook($errorMessage, $errorDetails);
+    
     respond(200, 'error handled');
 }
 
