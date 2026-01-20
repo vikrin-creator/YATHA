@@ -249,22 +249,37 @@ function updateSubscriptionRecord($db, $subscription) {
     $productId = isset($metadata['product_id']) ? intval($metadata['product_id']) : null;
     
     error_log('[webhook-subscription] Processing subscription: ' . $subId);
+    error_log('[webhook-subscription] Metadata from subscription: ' . json_encode($metadata));
     error_log('[webhook-subscription] User ID: ' . ($userId ?? 'NULL') . ', Product ID: ' . ($productId ?? 'NULL'));
-    error_log('[webhook-subscription] Customer ID: ' . $customerId);
     
-    // If we don't have user_id, we can't create the record
-    // This happens when metadata isn't set on the subscription
-    // For now, just log and return success to prevent Stripe retries
+    // If metadata is still empty, fall back to database lookup by customer_id
+    if (!$userId && $customerId) {
+        error_log('[webhook-subscription] Metadata missing, looking up user by customer_id: ' . $customerId);
+        $stmt = $db->prepare("SELECT id FROM users WHERE stripe_customer_id = ?");
+        if ($stmt) {
+            $stmt->bind_param('s', $customerId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result && $result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                $userId = intval($row['id']);
+                error_log('[webhook-subscription] Found user_id by lookup: ' . $userId);
+            } else {
+                error_log('[webhook-subscription] No user found with stripe_customer_id: ' . $customerId);
+            }
+        } else {
+            error_log('[webhook-subscription] Database prepare error: ' . $db->error);
+        }
+    }
+    
     if (!$subId) {
         error_log('[webhook-subscription] ERROR: Missing subscription ID');
         return false;
     }
     
     if (!$userId) {
-        error_log('[webhook-subscription] WARNING: Missing user_id in subscription metadata. Subscription ID: ' . $subId);
-        error_log('[webhook-subscription] This subscription will need to be created manually or via metadata update');
-        // Return true to prevent Stripe from retrying
-        return true;
+        error_log('[webhook-subscription] WARNING: Could not determine user_id for subscription: ' . $subId);
+        return true; // Return true to prevent Stripe retries
     }
     
     $currentPeriodStart = isset($subscription['current_period_start']) ? 
@@ -308,6 +323,15 @@ function updateSubscriptionRecord($db, $subscription) {
             error_log('[webhook-subscription] Prepare error: ' . $db->error);
             return false;
         }
+        
+        // Handle NULL product_id - convert to NULL instead of 0
+        if ($productId === null || $productId === 0) {
+            $productId = null;
+        }
+        
+        error_log('[webhook-subscription] Binding parameters: userId=' . $userId . ', subId=' . $subId . ', customerId=' . $customerId . ', productId=' . ($productId ?? 'NULL') . ', status=' . $status);
+        
+        // Bind with NULL handling for product_id
         $stmt->bind_param('isssisss', $userId, $subId, $customerId, $productId, $status, 
                          $currentPeriodStart, $currentPeriodEnd, $nextBillingDate);
     }
@@ -426,19 +450,36 @@ try {
         // Subscription cancelled
         $subscription = $event['data']['object'];
         $subId = $subscription['id'] ?? null;
+        $customerId = $subscription['customer'] ?? null;
         $metadata = $subscription['metadata'] ?? [];
         $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
         
-        error_log('[webhook-subscription-deleted] Cancelling subscription: ' . $subId . ', user_id: ' . ($userId ?? 'NULL'));
+        error_log('[webhook-subscription-deleted] Subscription: ' . $subId . ', User ID: ' . ($userId ?? 'NULL'));
+        
+        // If metadata is missing, fall back to database lookup
+        if (!$userId && $customerId) {
+            error_log('[webhook-subscription-deleted] User ID not in metadata, looking up by customer_id: ' . $customerId);
+            $stmt = $db->prepare("SELECT id FROM users WHERE stripe_customer_id = ?");
+            if ($stmt) {
+                $stmt->bind_param('s', $customerId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                if ($result && $result->num_rows > 0) {
+                    $row = $result->fetch_assoc();
+                    $userId = intval($row['id']);
+                    error_log('[webhook-subscription-deleted] Found user_id: ' . $userId);
+                }
+            }
+        }
         
         if ($subId && $userId) {
             $stmt = $db->prepare("UPDATE subscriptions SET status = 'cancelled', updated_at = NOW() 
                                  WHERE stripe_subscription_id = ? AND user_id = ?");
             $stmt->bind_param('si', $subId, $userId);
             $stmt->execute();
-            error_log('[webhook-subscription-deleted] SUCCESS: Marked subscription ' . $subId . ' as cancelled');
+            error_log('[webhook-subscription-deleted] SUCCESS: Marked subscription ' . $subId . ' as cancelled for user ' . $userId);
         } else {
-            error_log('[webhook-subscription-deleted] WARNING: Cannot cancel - subId: ' . $subId . ', userId: ' . ($userId ?? 'NULL'));
+            error_log('[webhook-subscription-deleted] Could not cancel - subId: ' . $subId . ', userId: ' . ($userId ?? 'NULL'));
         }
         respond(200, 'customer.subscription.deleted - subscription cancelled');
         break;
