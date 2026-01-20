@@ -364,7 +364,8 @@ $type = $event['type'] ?? '';
 
 logWebhook('Processing event type: ' . $type);
 
-switch ($type) {
+try {
+    switch ($type) {
     case 'checkout.session.completed':
         // Both one-time and subscription purchases
         logWebhook('Event: checkout.session.completed');
@@ -469,6 +470,15 @@ switch ($type) {
         
     default:
         respond(200, 'event ignored');
+    }
+} catch (Throwable $e) {
+    logWebhook('FATAL ERROR in webhook handler: ' . $e->getMessage(), [
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'code' => $e->getCode(),
+        'event_type' => $type
+    ]);
+    respond(200, 'error handled');
 }
 
 ?>

@@ -225,19 +225,19 @@ try {
             'line_items[0][price_data][recurring][interval]' => 'month',
             'line_items[0][price_data][unit_amount]' => $amountCents,
             'line_items[0][quantity]' => 1,
-            // Metadata at line_item level - flows to subscription
-            'line_items[0][metadata][user_id]' => $user['user_id'],
-            'line_items[0][metadata][subscription_type]' => 'recurring',
-            // Also attach metadata at session level for webhook compatibility
+            // Metadata at session level
             "metadata[user_id]" => $user['user_id'],
-            "metadata[subscription_type]" => 'recurring'
+            "metadata[subscription_type]" => 'recurring',
+            // IMPORTANT: subscription_data allows setting metadata on the subscription object
+            'subscription_data[metadata][user_id]' => $user['user_id'],
+            'subscription_data[metadata][subscription_type]' => 'recurring'
         ];
 
         // Extract product_id from first item if available
         if (!empty($items) && isset($items[0]['id'])) {
             $productId = intval($items[0]['id']);
             $params["metadata[product_id]"] = $productId;
-            $params["line_items[0][metadata][product_id]"] = $productId;
+            $params['subscription_data[metadata][product_id]'] = $productId;
         }
 
         if ($addressId) $params["metadata[address_id]"] = $addressId;
