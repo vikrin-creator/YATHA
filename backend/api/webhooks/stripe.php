@@ -250,6 +250,33 @@ function updateSubscriptionRecord($db, $subscription) {
     
     global $logFile;
     error_log('[webhook-subscription] Processing subscription: ' . $subId);
+    error_log('[webhook-subscription] Subscription metadata: ' . json_encode($metadata));
+    
+    // If metadata is empty on subscription, fetch from customer object
+    if (empty($metadata) && $customerId) {
+        error_log('[webhook-subscription] Metadata missing on subscription, fetching from customer: ' . $customerId);
+        $stripeCfg = include __DIR__ . '/../../src/config/stripe.php';
+        $stripeKey = $stripeCfg['secret_key'] ?? getenv('STRIPE_SECRET_KEY');
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/customers/' . urlencode($customerId));
+        curl_setopt($ch, CURLOPT_USERPWD, $stripeKey . ':');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $customerResponse = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode === 200) {
+            $customer = json_decode($customerResponse, true);
+            $metadata = $customer['metadata'] ?? [];
+            $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
+            $productId = isset($metadata['product_id']) ? intval($metadata['product_id']) : null;
+            error_log('[webhook-subscription] Customer metadata fetched: ' . json_encode($metadata));
+        } else {
+            error_log('[webhook-subscription] Failed to fetch customer metadata (HTTP ' . $httpCode . ')');
+        }
+    }
+    
     error_log('[webhook-subscription] User ID: ' . $userId . ', Product ID: ' . $productId);
     
     if (!$subId || !$userId) {
@@ -415,11 +442,42 @@ switch ($type) {
         // Subscription cancelled
         $subscription = $event['data']['object'];
         $subId = $subscription['id'] ?? null;
-        if ($subId) {
+        $customerId = $subscription['customer'] ?? null;
+        
+        // Get user_id from subscription metadata or customer
+        $metadata = $subscription['metadata'] ?? [];
+        $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
+        
+        // If metadata missing on subscription, fetch from customer
+        if (!$userId && $customerId) {
+            error_log('[webhook-subscription-deleted] Metadata missing, fetching from customer: ' . $customerId);
+            $stripeCfg = include __DIR__ . '/../../src/config/stripe.php';
+            $stripeKey = $stripeCfg['secret_key'] ?? getenv('STRIPE_SECRET_KEY');
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, 'https://api.stripe.com/v1/customers/' . urlencode($customerId));
+            curl_setopt($ch, CURLOPT_USERPWD, $stripeKey . ':');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $customerResponse = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode === 200) {
+                $customer = json_decode($customerResponse, true);
+                $metadata = $customer['metadata'] ?? [];
+                $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
+                error_log('[webhook-subscription-deleted] Customer metadata fetched: user_id=' . $userId);
+            }
+        }
+        
+        if ($subId && $userId) {
             $stmt = $db->prepare("UPDATE subscriptions SET status = 'cancelled', updated_at = NOW() 
-                                 WHERE stripe_subscription_id = ?");
-            $stmt->bind_param('s', $subId);
+                                 WHERE stripe_subscription_id = ? AND user_id = ?");
+            $stmt->bind_param('si', $subId, $userId);
             $stmt->execute();
+            error_log('[webhook-subscription-deleted] Marked subscription ' . $subId . ' as cancelled for user ' . $userId);
+        } else {
+            error_log('[webhook-subscription-deleted] Cannot cancel - missing subId or userId');
         }
         respond(200, 'customer.subscription.deleted - subscription cancelled');
         break;
