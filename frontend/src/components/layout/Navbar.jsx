@@ -315,7 +315,7 @@ function Navbar() {
                             }}
                             className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#111518] hover:bg-neutral-grey/10 w-full"
                           >
-                            <span className="material-symbols-outlined text-lg">card_subscription</span>
+                            <span className="material-symbols-outlined text-lg">subscriptions</span>
                             My Subscriptions
                           </button>
                           <button 

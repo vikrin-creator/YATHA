@@ -151,6 +151,7 @@ try {
             error_log('[stripe-fallback] Product ID from metadata: ' . ($productId ?: 'NULL'));
             error_log('[stripe-fallback] User ID: ' . $user['user_id']);
             error_log('[stripe-fallback] Session ID: ' . $sessionId);
+            error_log('[stripe-fallback] Metadata: ' . json_encode($metadata));
             
             // Insert subscription record (if subscriptions table exists)
             $insertStmt = $db->prepare(
@@ -192,13 +193,21 @@ try {
         $status = 'completed';
         $createdAt = date('Y-m-d H:i:s');
         
+        error_log('[stripe-fallback] Creating order with amount: ' . $amountTotal . ', address_id: ' . ($addressId ?: 'NULL'));
+        
         $insertStmt = $db->prepare(
             "INSERT INTO orders (user_id, total_amount, status, stripe_session_id, address_id, created_at) 
              VALUES (?, ?, ?, ?, ?, ?)"
         );
         
+        if (!$insertStmt) {
+            error_log('[stripe-fallback] Prepare error: ' . $db->error);
+            Response::error('Database prepare failed: ' . $db->error, 500);
+            exit;
+        }
+        
         $insertStmt->bind_param(
-            'idssss',
+            'idsssi',
             $user['user_id'],
             $amountTotal,
             $status,
@@ -208,10 +217,12 @@ try {
         );
         
         if (!$insertStmt->execute()) {
+            error_log('[stripe-fallback] Order insert error: ' . $insertStmt->error);
             Response::error('Failed to create order: ' . $insertStmt->error, 500);
             exit;
         }
         
+        error_log('[stripe-fallback] Order created successfully with ID: ' . $db->insert_id);
         $orderId = $db->insert_id;
         
         // Fetch and return the newly created order

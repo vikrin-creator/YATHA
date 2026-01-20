@@ -248,7 +248,14 @@ function updateSubscriptionRecord($db, $subscription) {
     $userId = isset($metadata['user_id']) ? intval($metadata['user_id']) : null;
     $productId = isset($metadata['product_id']) ? intval($metadata['product_id']) : null;
     
-    if (!$subId || !$userId) return false;
+    global $logFile;
+    error_log('[webhook-subscription] Processing subscription: ' . $subId);
+    error_log('[webhook-subscription] User ID: ' . $userId . ', Product ID: ' . $productId);
+    
+    if (!$subId || !$userId) {
+        error_log('[webhook-subscription] ERROR: Missing required fields - subId: ' . $subId . ', userId: ' . $userId);
+        return false;
+    }
     
     $currentPeriodStart = isset($subscription['current_period_start']) ? 
         date('Y-m-d H:i:s', $subscription['current_period_start']) : null;
@@ -259,28 +266,49 @@ function updateSubscriptionRecord($db, $subscription) {
     
     // Check if subscription record exists
     $check = $db->prepare("SELECT id FROM subscriptions WHERE stripe_subscription_id = ?");
+    if (!$check) {
+        error_log('[webhook-subscription] Prepare error: ' . $db->error);
+        return false;
+    }
+    
     $check->bind_param('s', $subId);
     $check->execute();
     $res = $check->get_result();
     
     if ($res->num_rows > 0) {
         // Update existing subscription
+        error_log('[webhook-subscription] Updating existing subscription');
         $stmt = $db->prepare("UPDATE subscriptions 
                             SET status = ?, current_period_start = ?, current_period_end = ?, 
                                 next_billing_date = ?, product_id = ?, updated_at = NOW() 
                             WHERE stripe_subscription_id = ?");
-        $stmt->bind_param('ssssss', $status, $currentPeriodStart, $currentPeriodEnd, $nextBillingDate, $productId, $subId);
+        if (!$stmt) {
+            error_log('[webhook-subscription] Prepare error: ' . $db->error);
+            return false;
+        }
+        $stmt->bind_param('sssisss', $status, $currentPeriodStart, $currentPeriodEnd, $nextBillingDate, $productId, $subId);
     } else {
         // Create new subscription record
+        error_log('[webhook-subscription] Creating new subscription');
         $stmt = $db->prepare("INSERT INTO subscriptions 
                             (user_id, stripe_subscription_id, stripe_customer_id, product_id, status, 
                              current_period_start, current_period_end, next_billing_date, created_at, updated_at) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+        if (!$stmt) {
+            error_log('[webhook-subscription] Prepare error: ' . $db->error);
+            return false;
+        }
         $stmt->bind_param('isssisss', $userId, $subId, $customerId, $productId, $status, 
                          $currentPeriodStart, $currentPeriodEnd, $nextBillingDate);
     }
     
-    return $stmt->execute();
+    if ($stmt->execute()) {
+        error_log('[webhook-subscription] SUCCESS: Subscription processed');
+        return true;
+    } else {
+        error_log('[webhook-subscription] Execute error: ' . $stmt->error);
+        return false;
+    }
 }
 
 // Helper to handle failed payments
@@ -328,18 +356,25 @@ logWebhook('Processing event type: ' . $type);
 
 switch ($type) {
     case 'checkout.session.completed':
-        // One-time purchase completed
+        // Both one-time and subscription purchases
         logWebhook('Event: checkout.session.completed');
         $session = $event['data']['object'];
         $paymentStatus = $session['payment_status'] ?? null;
+        $sessionMode = $session['mode'] ?? 'payment';
         
-        logWebhook('Session payment status', ['status' => $paymentStatus]);
+        logWebhook('Session details', ['payment_status' => $paymentStatus, 'mode' => $sessionMode]);
         
         if ($paymentStatus === 'paid') {
-            $ok = createOrderFromCheckoutSession($db, $session);
-            if ($ok) {
-                logWebhook('checkout.session.completed - order created successfully');
-                respond(200, 'checkout.session.completed - order created');
+            if ($sessionMode === 'subscription') {
+                // For subscription mode - subscription will be created by customer.subscription.created event
+                // Just log it for now
+                logWebhook('checkout.session.completed - subscription mode session, subscription will be created by customer.subscription.created event');
+            } else {
+                // For payment mode - create order
+                $ok = createOrderFromCheckoutSession($db, $session);
+                if ($ok) {
+                    logWebhook('checkout.session.completed - order created successfully');
+                }
             }
         }
         logWebhook('checkout.session.completed handled');
