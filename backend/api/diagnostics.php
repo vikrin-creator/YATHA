@@ -10,7 +10,6 @@ $diagnostics = [
     'env_vars' => [
         'STRIPE_SECRET_KEY' => getenv('STRIPE_SECRET_KEY') ? 'SET (' . strlen(getenv('STRIPE_SECRET_KEY')) . ' chars)' : 'NOT SET',
         'STRIPE_PUBLIC_KEY' => getenv('STRIPE_PUBLIC_KEY') ? 'SET (' . strlen(getenv('STRIPE_PUBLIC_KEY')) . ' chars)' : 'NOT SET',
-        'STRIPE_WEBHOOK_SECRET' => getenv('STRIPE_WEBHOOK_SECRET') ? 'SET' : 'NOT SET',
     ]
 ];
 
@@ -27,8 +26,7 @@ if (file_exists($envPath)) {
     $cfg = include __DIR__ . '/../src/config/stripe.php';
     $diagnostics['stripe_config'] = [
         'secret_key' => $cfg['secret_key'] ? 'LOADED (' . strlen($cfg['secret_key']) . ' chars)' : 'EMPTY',
-        'public_key' => $cfg['public_key'] ? 'LOADED (' . strlen($cfg['public_key']) . ' chars)' : 'EMPTY',
-        'webhook_secret' => $cfg['webhook_secret'] ? 'LOADED' : 'EMPTY'
+        'public_key' => $cfg['public_key'] ? 'LOADED (' . strlen($cfg['public_key']) . ' chars)' : 'EMPTY'
     ];
 } else {
     $diagnostics['env_file'] = [

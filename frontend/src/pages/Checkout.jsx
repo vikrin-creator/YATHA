@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { isAuthenticated, getCurrentUser, getToken } from '../services/authService'
+import apiClient from '../services/api'
 
 const API_BASE_URL = window.location.hostname === 'localhost' 
   ? "http://localhost:8000" 
@@ -69,17 +70,21 @@ function Checkout() {
   const fetchAddresses = async () => {
     try {
       const token = getToken()
-      if (!token) return
-      const res = await fetch(`${API_BASE_URL}/api/addresses`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-      })
-      if (!res.ok) return
-      const data = await res.json()
-      if (data.success) {
-        setAddresses(data.data || [])
-        // pick default address if present
-        const def = (data.data || []).find(a => a.is_default === 1 || a.is_default === true)
+      if (!token) {
+        console.log('[Checkout] No token found, skipping address fetch')
+        return
+      }
+      console.log('[Checkout] Fetching addresses...')
+      
+      const res = await apiClient.get('/addresses')
+      console.log('[Checkout] Address API response:', res)
+      
+      if (res.success && res.data) {
+        setAddresses(res.data)
+        // pick default address if present - handle both boolean and integer values
+        const def = (res.data || []).find(a => a.is_default == 1 || a.is_default === true || a.is_default === '1')
+        console.log('[Checkout] Addresses loaded:', res.data, 'Default address found:', def)
+        
         if (def) {
           setSelectedAddressId(def.id)
           setFormData(prev => ({
@@ -93,10 +98,13 @@ function Checkout() {
             zipCode: def.pincode || prev.zipCode,
             country: def.country || prev.country
           }))
+          console.log('[Checkout] Default address selected:', def)
         }
+      } else {
+        console.error('[Checkout] API response not successful:', res)
       }
     } catch (err) {
-      console.error('Error fetching addresses:', err)
+      console.error('[Checkout] Error fetching addresses:', err)
     }
   }
 
@@ -280,7 +288,7 @@ function Checkout() {
                                 }}
                               />
                               <div className="flex-1">
-                                <div className="font-medium text-[#111518]">{addr.name} {addr.is_default === 1 && <span className="text-xs text-primary">(Default)</span>}</div>
+                                <div className="font-medium text-[#111518]">{addr.name} {(addr.is_default == 1 || addr.is_default === true || addr.is_default === '1') && <span className="text-xs text-primary">(Default)</span>}</div>
                                 <div className="text-sm text-neutral-grey">{addr.address_line_1}{addr.address_line_2 ? `, ${addr.address_line_2}` : ''}</div>
                                 <div className="text-sm text-neutral-grey">{addr.city}, {addr.state} - {addr.pincode}</div>
                               </div>

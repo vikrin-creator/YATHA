@@ -134,21 +134,6 @@ switch ($route) {
     case 'subscriptions':
         require_once __DIR__ . '/subscriptions.php';
         break;
-    case 'stripe-webhook-fallback':
-        require_once __DIR__ . '/stripe-webhook-fallback.php';
-        break;
-    case 'webhooks':
-        // Route webhooks like /api/webhooks/stripe
-        switch ($subroute) {
-            case 'stripe':
-                require_once __DIR__ . '/webhooks/stripe.php';
-                break;
-            default:
-                http_response_code(404);
-                echo json_encode(['success' => false, 'status' => 'error', 'message' => 'Webhook route not found']);
-                break;
-        }
-        break;
     case 'admin':
         // Route admin endpoints
         switch ($subroute) {

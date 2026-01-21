@@ -1,7 +1,7 @@
 <?php
 /**
  * Stripe configuration loader
- * Returns an array with 'secret_key', 'public_key', and 'webhook_secret'.
+ * Returns an array with 'secret_key' and 'public_key'.
  * Reads from .env file FIRST (most reliable), then from environment variables.
  */
 
@@ -54,7 +54,6 @@ error_log("[stripe-config] Loaded from .env: " . json_encode(array_keys($envVars
 
 $secret = $envVars['STRIPE_SECRET_KEY'] ?? null;
 $public = $envVars['STRIPE_PUBLIC_KEY'] ?? null;
-$webhook = $envVars['STRIPE_WEBHOOK_SECRET'] ?? null;
 
 // FALLBACK: If not found in .env, try environment variables
 if (!$secret) {
@@ -67,18 +66,11 @@ if (!$public) {
     if ($public) error_log("[stripe-config] Public key from getenv()");
 }
 
-if (!$webhook) {
-    $webhook = getenv('STRIPE_WEBHOOK_SECRET') ?: null;
-    if ($webhook) error_log("[stripe-config] Webhook secret from getenv()");
-}
-
 // Log final status
 error_log("[stripe-config] Final keys: secret=" . (strlen($secret ?? '') > 0 ? "YES (" . strlen($secret) . " chars)" : "NO") . 
-          ", public=" . (strlen($public ?? '') > 0 ? "YES (" . strlen($public) . " chars)" : "NO") . 
-          ", webhook=" . (strlen($webhook ?? '') > 0 ? "YES (" . strlen($webhook) . " chars)" : "NO"));
+          ", public=" . (strlen($public ?? '') > 0 ? "YES (" . strlen($public) . " chars)" : "NO"));
 
 return [
     'secret_key' => $secret ?: '',
-    'public_key' => $public ?: '',
-    'webhook_secret' => $webhook ?: ''
+    'public_key' => $public ?: ''
 ];

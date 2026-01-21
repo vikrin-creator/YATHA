@@ -14,11 +14,6 @@ RewriteCond %{REQUEST_URI} ^/public/ [OR]
 RewriteCond %{REQUEST_URI} ^/backend/public/
 RewriteRule ^ - [L]
 
-# Allow direct access to webhook files
-RewriteCond %{REQUEST_URI} ^/api/webhooks/ [OR]
-RewriteCond %{REQUEST_URI} ^/backend/api/webhooks/
-RewriteRule ^ - [L]
-
 # Route everything else through index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

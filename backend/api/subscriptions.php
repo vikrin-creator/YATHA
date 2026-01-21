@@ -167,9 +167,20 @@ try {
         $items = $input['items'] ?? [];
         $total = isset($input['total']) ? floatval($input['total']) : null;
         $addressId = $input['address_id'] ?? null;
-        $baseUrl = $input['success_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '');
+        
+        // Determine the base URL - use production URL if not localhost
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (strpos($origin, 'localhost') !== false || strpos($origin, '127.0.0.1') !== false) {
+            // For local development, use production URL for Stripe checkout
+            $productionUrl = 'https://tan-goshawk-974791.hostingersite.com';
+            $baseUrl = $input['success_url'] ?? $productionUrl;
+        } else {
+            // In production, use the origin
+            $baseUrl = $input['success_url'] ?? $origin;
+        }
+        
         $successUrl = $baseUrl . (strpos($baseUrl, '?') ? '&' : '?') . 'session_id={CHECKOUT_SESSION_ID}';
-        $cancelUrl = $input['cancel_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '') . '/product';
+        $cancelUrl = $input['cancel_url'] ?? $baseUrl . '/product';
 
         if ($total === null || count($items) === 0) {
             Response::validationError(['message' => 'items and total are required']);

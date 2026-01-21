@@ -153,9 +153,20 @@ try {
         $items = $input['items'] ?? [];
         $total = isset($input['total']) ? floatval($input['total']) : null;
         $addressId = $input['address_id'] ?? null;
-        $baseUrl = $input['success_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '');
+        
+        // Determine the base URL - use production URL if not localhost
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (strpos($origin, 'localhost') !== false || strpos($origin, '127.0.0.1') !== false) {
+            // For local development, use production URL for Stripe checkout
+            $productionUrl = 'https://tan-goshawk-974791.hostingersite.com';
+            $baseUrl = $input['success_url'] ?? $productionUrl;
+        } else {
+            // In production, use the origin
+            $baseUrl = $input['success_url'] ?? $origin;
+        }
+        
         $successUrl = $baseUrl . (strpos($baseUrl, '?') ? '&' : '?') . 'session_id={CHECKOUT_SESSION_ID}';
-        $cancelUrl = $input['cancel_url'] ?? ($_SERVER['HTTP_ORIGIN'] ?? '') . '/checkout';
+        $cancelUrl = $input['cancel_url'] ?? $baseUrl . '/checkout';
 
         if ($total === null) {
             Response::validationError(['message' => 'total amount is required']);
@@ -202,6 +213,50 @@ try {
                 $errMsg = $sessionResp['body']['error']['message'];
             }
             Response::error($errMsg, 500, $sessionResp['body'] ?? []);
+        }
+
+        // Create order immediately after successful Stripe session creation
+        try {
+            $database = new Database();
+            $db = $database->connect();
+            
+            if (!$db) {
+                throw new Exception('Database connection failed');
+            }
+
+            $sessionId = $sessionResp['body']['id'] ?? null;
+            $shippingAddressJson = null;
+            
+            // Get shipping address if address_id provided
+            if ($addressId) {
+                $addressQuery = "SELECT full_name, address_line_1, address_line_2, city, state, pincode, country FROM addresses WHERE id = ? AND user_id = ?";
+                $addressStmt = $db->prepare($addressQuery);
+                $addressStmt->bind_param('ii', $addressId, $user['user_id']);
+                $addressStmt->execute();
+                $addressResult = $addressStmt->get_result();
+                
+                if ($addressRow = $addressResult->fetch_assoc()) {
+                    $shippingAddressJson = json_encode($addressRow);
+                }
+            }
+
+            // Create order record
+            $orderQuery = "INSERT INTO orders (user_id, total_amount, status, stripe_session_id, shipping_address, created_at) VALUES (?, ?, 'pending', ?, ?, NOW())";
+            $orderStmt = $db->prepare($orderQuery);
+            $orderStmt->bind_param('idss', $user['user_id'], $total, $sessionId, $shippingAddressJson);
+            
+            if (!$orderStmt->execute()) {
+                error_log('[checkout] Failed to create order: ' . $orderStmt->error);
+                throw new Exception('Failed to create order record');
+            }
+            
+            $orderId = $orderStmt->insert_id;
+            error_log('[checkout] Order created successfully with ID: ' . $orderId . ' for session: ' . $sessionId);
+            
+        } catch (Exception $orderException) {
+            error_log('[checkout] Order creation error: ' . $orderException->getMessage());
+            // Don't fail the checkout if order creation fails - the payment is already initiated
+            // The order can be manually created later if needed
         }
 
         echo json_encode([

@@ -1,5 +1,6 @@
 <?php
 
+if (!class_exists('Response')) {
 class Response
 {
     public static function setJsonHeader()
@@ -54,5 +55,6 @@ class Response
         ]);
         exit;
     }
+}
 }
 ?>

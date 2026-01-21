@@ -65,33 +65,7 @@ function OrderSuccess() {
       
       console.log(`[OrderSuccess] Fetching order for session: ${sessionId} (attempt ${retryCount + 1}/${MAX_RETRIES})`)
       
-      // In development/localhost: use fallback webhook to create order immediately
-      // In production: rely on Stripe webhook which is already processing
-      const isLocalhost = window.location.hostname === 'localhost'
-      
-      if (isLocalhost) {
-        // Local development: call fallback webhook to create order
-        const sessionResponse = await fetch(`${API_BASE_URL}/api/stripe-webhook-fallback`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ session_id: sessionId })
-        }).catch(() => null)
-
-        // If fallback succeeded, use that order
-        if (sessionResponse && sessionResponse.ok) {
-          const fallbackData = await sessionResponse.json()
-          if (fallbackData.success && fallbackData.data) {
-            setOrder(fallbackData.data)
-            setLoading(false)
-            return
-          }
-        }
-      }
-
-      // Query orders by stripe_session_id (works for both local and production)
+      // Query orders by stripe_session_id
       const response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'GET',
         headers: {
@@ -263,8 +237,8 @@ function OrderSuccess() {
                       return (
                         <div className="text-[#111518] space-y-1">
                           <p className="font-medium">{addr.full_name || 'N/A'}</p>
-                          <p>{addr.street_address || 'N/A'}</p>
-                          <p>{addr.apartment ? `${addr.apartment}, ` : ''}{addr.city}, {addr.state} {addr.postal_code}</p>
+                          <p>{addr.address_line_1 || 'N/A'}</p>
+                          <p>{addr.address_line_2 ? `${addr.address_line_2}, ` : ''}{addr.city}, {addr.state} {addr.pincode}</p>
                           <p>{addr.country}</p>
                           {addr.phone && <p className="text-neutral-grey">Phone: {addr.phone}</p>}
                         </div>

@@ -5,7 +5,7 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# ✅ Route /api requests to backend API (REQUIRED FOR WEBHOOKS)
+# ✅ Route /api requests to backend API
 RewriteCond %{REQUEST_URI} ^/api
 RewriteRule ^api/(.*)$ backend/api/$1 [L]
 
