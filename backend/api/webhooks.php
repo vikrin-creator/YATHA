@@ -201,6 +201,8 @@ function handlePaymentSucceeded($db, $invoiceData) {
     
     // Create monthly order
     try {
+        error_log('[webhooks] Attempting to create order with data: user_id=' . $subscription['user_id'] . ', subscription_id=' . $subscription['id'] . ', product_id=' . $subscription['product_id'] . ', quantity=' . ($subscription['shipment_quantity'] ?? 1) . ', invoice_id=' . ($invoiceData['id'] ?? 'null'));
+        
         $fulfillment = new SubscriptionFulfillment($db);
         $orderId = $fulfillment->createSubscriptionOrder(
             $subscription['user_id'],
@@ -213,6 +215,10 @@ function handlePaymentSucceeded($db, $invoiceData) {
         error_log('[webhooks] Order created from subscription: ' . $orderId);
     } catch (Exception $e) {
         error_log('[webhooks] Error creating order: ' . $e->getMessage());
+        error_log('[webhooks] Stack trace: ' . $e->getTraceAsString());
+        
+        // Write to debug file for troubleshooting
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Error: ' . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
 
