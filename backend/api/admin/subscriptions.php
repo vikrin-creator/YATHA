@@ -39,12 +39,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Get token
 function getAuthToken() {
-    $headers = getallheaders();
-    if (isset($headers['Authorization'])) {
-        if (preg_match('/Bearer\s+(.*)$/i', $headers['Authorization'], $matches)) {
+    // Try getallheaders first if available
+    if (function_exists('getallheaders')) {
+        $headers = getallheaders();
+        if (isset($headers['Authorization'])) {
+            if (preg_match('/Bearer\s+(.*)$/i', $headers['Authorization'], $matches)) {
+                return $matches[1];
+            }
+        }
+    }
+    
+    // Fallback to $_SERVER
+    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        if (preg_match('/Bearer\s+(.*)$/i', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
             return $matches[1];
         }
     }
+    
     return null;
 }
 
