@@ -163,10 +163,11 @@ function handlePaymentSucceeded($db, $invoiceData) {
     file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Looking for subscription: ' . $stripeSubscriptionId . "\n", FILE_APPEND);
     
     // Get subscription details from local database
+    // First try with status = 'active', then try without status filter
     $stmt = $db->prepare("
         SELECT id, user_id, product_id, shipment_quantity, stripe_customer_id, status
         FROM subscriptions 
-        WHERE stripe_subscription_id = ? AND status = 'active'
+        WHERE stripe_subscription_id = ?
     ");
     
     if (!$stmt) {
@@ -190,14 +191,14 @@ function handlePaymentSucceeded($db, $invoiceData) {
     $stmt->close();
     
     if (!$subscription) {
-        $errMsg = 'Subscription not found or not active: ' . $stripeSubscriptionId;
+        $errMsg = 'Subscription not found: ' . $stripeSubscriptionId;
         error_log('[webhooks] ' . $errMsg);
         file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $errMsg . "\n", FILE_APPEND);
         return;
     }
     
-    error_log('[webhooks] Found subscription: id=' . $subscription['id'] . ', user_id=' . $subscription['user_id']);
-    file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Found subscription: id=' . $subscription['id'] . ', user_id=' . $subscription['user_id'] . "\n", FILE_APPEND);
+    error_log('[webhooks] Found subscription: id=' . $subscription['id'] . ', user_id=' . $subscription['user_id'] . ', status=' . $subscription['status']);
+    file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Found subscription: id=' . $subscription['id'] . ', user_id=' . $subscription['user_id'] . ', status=' . $subscription['status'] . "\n", FILE_APPEND);
     
     // Get product details
     $productStmt = $db->prepare("SELECT name, price FROM products WHERE id = ?");
