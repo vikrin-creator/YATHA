@@ -155,8 +155,12 @@ function handlePaymentSucceeded($db, $invoiceData) {
     
     if (!$stripeSubscriptionId) {
         error_log('[webhooks] No subscription ID in invoice');
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - No subscription ID in invoice\n', FILE_APPEND);
         return;
     }
+    
+    error_log('[webhooks] Looking for subscription: ' . $stripeSubscriptionId);
+    file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Looking for subscription: ' . $stripeSubscriptionId . "\n", FILE_APPEND);
     
     // Get subscription details from local database
     $stmt = $db->prepare("
@@ -166,14 +170,18 @@ function handlePaymentSucceeded($db, $invoiceData) {
     ");
     
     if (!$stmt) {
-        error_log('[webhooks] Database prepare error: ' . $db->error);
+        $errMsg = 'Database prepare error: ' . $db->error;
+        error_log('[webhooks] ' . $errMsg);
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $errMsg . "\n", FILE_APPEND);
         return;
     }
     
     $stmt->bind_param('s', $stripeSubscriptionId);
     
     if (!$stmt->execute()) {
-        error_log('[webhooks] Query execution failed: ' . $stmt->error);
+        $errMsg = 'Query execution failed: ' . $stmt->error;
+        error_log('[webhooks] ' . $errMsg);
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $errMsg . "\n", FILE_APPEND);
         return;
     }
     
@@ -182,9 +190,14 @@ function handlePaymentSucceeded($db, $invoiceData) {
     $stmt->close();
     
     if (!$subscription) {
-        error_log('[webhooks] Subscription not found or not active: ' . $stripeSubscriptionId);
+        $errMsg = 'Subscription not found or not active: ' . $stripeSubscriptionId;
+        error_log('[webhooks] ' . $errMsg);
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $errMsg . "\n", FILE_APPEND);
         return;
     }
+    
+    error_log('[webhooks] Found subscription: id=' . $subscription['id'] . ', user_id=' . $subscription['user_id']);
+    file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Found subscription: id=' . $subscription['id'] . ', user_id=' . $subscription['user_id'] . "\n", FILE_APPEND);
     
     // Get product details
     $productStmt = $db->prepare("SELECT name, price FROM products WHERE id = ?");
