@@ -67,10 +67,22 @@ if (!$token) {
 
 $jwt = new JWT();
 $decoded = $jwt->verifyToken($token);
-if (!$decoded || $decoded->role !== 'admin') {
-    Response::error('Unauthorized - Admin access required', 403);
+if (!$decoded) {
+    Response::error('Invalid token', 401);
     exit;
 }
+
+// Check if admin - handle both object property and array key
+$role = null;
+if (is_object($decoded)) {
+    $role = $decoded->role ?? null;
+} elseif (is_array($decoded)) {
+    $role = $decoded['role'] ?? null;
+}
+
+if ($role !== 'admin') {
+    Response::error('Unauthorized - Admin access required', 403);
+    exit;
 
 $database = new Database();
 $db = $database->connect();
