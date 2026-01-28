@@ -13,6 +13,7 @@ function Checkout() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
   const [orderPlaced, setOrderPlaced] = useState(false)
+  const [shipmentQuantities, setShipmentQuantities] = useState({}) // Track quantity per subscription item
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -57,6 +58,15 @@ function Checkout() {
     // Load cart items
     const cart = JSON.parse(localStorage.getItem('cart') || '[]')
     setCartItems(cart)
+    
+    // Initialize shipment quantities
+    const quantities = {}
+    cart.forEach(item => {
+      if (item.purchaseType === 'subscribe') {
+        quantities[item.id] = item.defaultShipmentQuantity || 1
+      }
+    })
+    setShipmentQuantities(quantities)
   }, [navigate])
 
   const handleInputChange = (e) => {
@@ -152,10 +162,13 @@ function Checkout() {
       if (subscriptionItems.length > 0) {
         // Handle subscription items
         endpoint = `${API_BASE_URL}/api/subscriptions`
+        // Add shipment_quantity from state
+        const shipmentQty = shipmentQuantities[subscriptionItems[0].id] || 1
         payload = {
           ...basePayload,
           items: subscriptionItems,
-          total: total
+          total: total,
+          shipment_quantity: shipmentQty
         }
       } else {
         // Handle one-time purchase items
@@ -445,12 +458,34 @@ function Checkout() {
 
               <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
                 {cartItems.map(item => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <div>
+                  <div key={item.id} className="flex justify-between items-start text-sm">
+                    <div className="flex-1">
                       <p className="font-medium text-gray-700">{item.name}</p>
                       <p className="text-neutral-grey">Qty: {item.quantity}</p>
+                      {item.purchaseType === 'subscribe' && (
+                        <div className="mt-2 bg-blue-50 p-2 rounded">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Units per Monthly Delivery:
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={shipmentQuantities[item.id] || 1}
+                            onChange={(e) => setShipmentQuantities(prev => ({
+                              ...prev,
+                              [item.id]: parseInt(e.target.value) || 1
+                            }))}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-moringa-green focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-600 mt-1">
+                            📅 First delivery: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {' '} • Next: {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <p className="font-bold text-[#111518]">${(item.price * item.quantity).toLocaleString()}</p>
+                    <p className="font-bold text-[#111518] ml-2">${(item.price * item.quantity).toLocaleString()}</p>
                   </div>
                 ))}
               </div>

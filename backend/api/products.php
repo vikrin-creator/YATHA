@@ -138,11 +138,13 @@ function createProduct($db, $input)
     $status = trim($input['status'] ?? 'active');
     $featured = isset($input['featured']) ? (bool)$input['featured'] : false;
     $image = $input['image'] ?? null;
+    $subscription_eligible = isset($input['subscription_eligible']) ? (bool)$input['subscription_eligible'] : true;
+    $default_shipment_quantity = isset($input['default_shipment_quantity']) ? intval($input['default_shipment_quantity']) : 1;
 
-    $query = "INSERT INTO products (name, slug, description, short_description, price, original_price, stock_quantity, category, status, featured, image, created_at) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    $query = "INSERT INTO products (name, slug, description, short_description, price, original_price, stock_quantity, category, status, featured, image, subscription_eligible, default_shipment_quantity, created_at) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
     $stmt = $db->prepare($query);
-    $stmt->bind_param('ssssddiisbs', $name, $slug, $description, $short_description, $price, $original_price, $stock_quantity, $category, $status, $featured, $image);
+    $stmt->bind_param('ssssddiisbsii', $name, $slug, $description, $short_description, $price, $original_price, $stock_quantity, $category, $status, $featured, $image, $subscription_eligible, $default_shipment_quantity);
 
     if ($stmt->execute()) {
         $product_id = $stmt->insert_id;
@@ -194,7 +196,7 @@ function updateProduct($db, $input, $product_id)
     $params = [];
     $types = '';
 
-    $allowed_fields = ['name', 'slug', 'description', 'short_description', 'price', 'original_price', 'stock_quantity', 'category', 'status', 'featured', 'image'];
+    $allowed_fields = ['name', 'slug', 'description', 'short_description', 'price', 'original_price', 'stock_quantity', 'category', 'status', 'featured', 'image', 'subscription_eligible', 'default_shipment_quantity'];
     
     foreach ($allowed_fields as $field) {
         if (isset($input[$field])) {

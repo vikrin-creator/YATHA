@@ -18,6 +18,7 @@ ini_set('display_errors', '0');
 require_once __DIR__ . '/../src/middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/utils/Response.php';
 require_once __DIR__ . '/../src/config/Database.php';
+require_once __DIR__ . '/../src/services/SubscriptionFulfillment.php';
 
 // Load Stripe config with error logging
 $stripeConfigPath = __DIR__ . '/../src/config/stripe.php';
@@ -111,12 +112,76 @@ try {
     if ($method === 'GET') {
         error_log('[subscriptions] GET request - fetching subscriptions for user: ' . $user['user_id']);
         
+        // Check if requesting subscription details with orders
+        $pathParts = explode('/', trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/'));
+        $subscriptionId = end($pathParts);
+        
+        if (is_numeric($subscriptionId) && $subscriptionId > 0) {
+            // GET /api/subscriptions/{id} - Get specific subscription with order history
+            error_log('[subscriptions] GET request for subscription ID: ' . $subscriptionId);
+            
+            $stmt = $db->prepare("
+                SELECT 
+                    s.id,
+                    s.stripe_subscription_id,
+                    s.product_id,
+                    s.shipment_quantity,
+                    s.status,
+                    s.current_period_start,
+                    s.current_period_end,
+                    s.next_billing_date,
+                    s.created_at,
+                    p.name as product_name,
+                    p.price,
+                    p.description
+                FROM subscriptions s
+                LEFT JOIN products p ON s.product_id = p.id
+                WHERE s.id = ? AND s.user_id = ?
+            ");
+            
+            if (!$stmt) {
+                error_log('[subscriptions] Prepare error: ' . $db->error);
+                throw new Exception('Database error: ' . $db->error);
+            }
+            
+            $stmt->bind_param('ii', $subscriptionId, $user['user_id']);
+            
+            if (!$stmt->execute()) {
+                error_log('[subscriptions] Execute error: ' . $stmt->error);
+                throw new Exception('Query execution failed: ' . $stmt->error);
+            }
+            
+            $result = $stmt->get_result();
+            $subscription = $result->fetch_assoc();
+            $stmt->close();
+            
+            if (!$subscription) {
+                Response::error('Subscription not found', 404);
+            }
+            
+            // Get associated orders
+            try {
+                $fulfillment = new SubscriptionFulfillment($db);
+                $orders = $fulfillment->getSubscriptionOrders($subscriptionId);
+                $subscription['orders'] = $orders;
+            } catch (Exception $e) {
+                error_log('[subscriptions] Error fetching orders: ' . $e->getMessage());
+                $subscription['orders'] = [];
+            }
+            
+            Response::success($subscription, 'Subscription details retrieved successfully');
+            exit;
+        }
+        
+        // GET /api/subscriptions - List all subscriptions
         $query = "
             SELECT 
                 s.id,
                 s.stripe_subscription_id,
                 s.product_id,
+                s.shipment_quantity,
                 s.status,
+                s.next_billing_date,
                 s.created_at,
                 p.name as product_name,
                 p.price
@@ -163,9 +228,10 @@ try {
 
     if ($method === 'POST') {
         // Create a Stripe Checkout Session for subscription
-        // Expected body: { items: [...], total: number, address_id, success_url, cancel_url }
+        // Expected body: { items: [...], total: number, shipment_quantity: 1, address_id, success_url, cancel_url }
         $items = $input['items'] ?? [];
         $total = isset($input['total']) ? floatval($input['total']) : null;
+        $shipmentQuantity = intval($input['shipment_quantity'] ?? 1);
         $addressId = $input['address_id'] ?? null;
         
         // Determine the base URL - use production URL if not localhost
@@ -241,7 +307,8 @@ try {
             "metadata[subscription_type]" => 'recurring',
             // IMPORTANT: subscription_data allows setting metadata on the subscription object
             'subscription_data[metadata][user_id]' => $user['user_id'],
-            'subscription_data[metadata][subscription_type]' => 'recurring'
+            'subscription_data[metadata][subscription_type]' => 'recurring',
+            'subscription_data[metadata][shipment_quantity]' => $shipmentQuantity
         ];
 
         // Extract product_id from first item if available
@@ -366,6 +433,105 @@ try {
         
         Response::success('Subscription canceled successfully');
         exit;
+    } elseif ($method === 'PATCH') {
+        // PATCH /api/subscriptions/{id} - Update subscription (quantity, etc)
+        // Expected body: { shipment_quantity: number } or { action: 'pause'/'resume'/'skip' }
+        $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $pathParts = explode('/', trim($path, '/'));
+        $subscriptionId = end($pathParts);
+        
+        if (!is_numeric($subscriptionId)) {
+            Response::error('Invalid subscription ID', 400);
+        }
+        
+        // Verify subscription exists and belongs to user
+        $checkStmt = $db->prepare("
+            SELECT id FROM subscriptions 
+            WHERE id = ? AND user_id = ?
+        ");
+        
+        $checkStmt->bind_param('ii', $subscriptionId, $user['user_id']);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+        
+        if (!$checkResult->fetch_assoc()) {
+            Response::error('Subscription not found', 404);
+        }
+        $checkStmt->close();
+        
+        // Handle different actions
+        $action = $input['action'] ?? null;
+        
+        if ($action === 'skip') {
+            // Skip next shipment
+            try {
+                $fulfillment = new SubscriptionFulfillment($db);
+                $skipId = $fulfillment->skipNextShipment($subscriptionId);
+                Response::success(['skip_id' => $skipId], 'Next shipment skipped');
+                exit;
+            } catch (Exception $e) {
+                Response::error('Failed to skip shipment: ' . $e->getMessage(), 500);
+            }
+        } elseif ($action === 'pause') {
+            // Pause subscription
+            $pauseStmt = $db->prepare("
+                UPDATE subscriptions 
+                SET status = 'paused'
+                WHERE id = ? AND user_id = ?
+            ");
+            
+            $pauseStmt->bind_param('ii', $subscriptionId, $user['user_id']);
+            
+            if (!$pauseStmt->execute()) {
+                Response::error('Failed to pause subscription', 500);
+            }
+            $pauseStmt->close();
+            
+            Response::success('Subscription paused');
+            exit;
+        } elseif ($action === 'resume') {
+            // Resume subscription
+            $resumeStmt = $db->prepare("
+                UPDATE subscriptions 
+                SET status = 'active'
+                WHERE id = ? AND user_id = ?
+            ");
+            
+            $resumeStmt->bind_param('ii', $subscriptionId, $user['user_id']);
+            
+            if (!$resumeStmt->execute()) {
+                Response::error('Failed to resume subscription', 500);
+            }
+            $resumeStmt->close();
+            
+            Response::success('Subscription resumed');
+            exit;
+        } else if (isset($input['shipment_quantity'])) {
+            // Update shipment quantity
+            $newQuantity = intval($input['shipment_quantity']);
+            
+            if ($newQuantity < 1) {
+                Response::validationError(['message' => 'Quantity must be at least 1']);
+            }
+            
+            $quantityStmt = $db->prepare("
+                UPDATE subscriptions 
+                SET shipment_quantity = ?
+                WHERE id = ? AND user_id = ?
+            ");
+            
+            $quantityStmt->bind_param('iii', $newQuantity, $subscriptionId, $user['user_id']);
+            
+            if (!$quantityStmt->execute()) {
+                Response::error('Failed to update quantity', 500);
+            }
+            $quantityStmt->close();
+            
+            Response::success(['shipment_quantity' => $newQuantity], 'Shipment quantity updated');
+            exit;
+        } else {
+            Response::validationError(['message' => 'No update action specified']);
+        }
     } else {
         Response::error('Method not allowed', 405);
     }
