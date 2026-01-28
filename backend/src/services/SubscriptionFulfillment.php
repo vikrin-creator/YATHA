@@ -26,6 +26,12 @@ class SubscriptionFulfillment {
      * @return int Created order ID
      */
     public function createSubscriptionOrder($userId, $subscriptionId, $productId, $quantity = 1, $stripeInvoiceId = null) {
+        // Ensure all numeric params are integers
+        $userId = (int)$userId;
+        $subscriptionId = (int)$subscriptionId;
+        $productId = (int)$productId;
+        $quantity = (int)$quantity;
+        
         error_log('[fulfillment] Creating subscription order: user=' . $userId . ', subscription=' . $subscriptionId . ', product=' . $productId . ', qty=' . $quantity);
         
         try {
@@ -82,11 +88,13 @@ class SubscriptionFulfillment {
             // Calculate order total
             $totalAmount = $product['price'] * $quantity;
             
-            // Create order record
+            // Create order record - use ON DUPLICATE KEY UPDATE to handle retries
             $orderStmt = $this->db->prepare("
                 INSERT INTO orders 
                 (user_id, total_amount, status, shipping_address, stripe_invoice_id, created_at)
                 VALUES (?, ?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                updated_at = NOW()
             ");
             
             if (!$orderStmt) {

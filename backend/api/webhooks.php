@@ -213,28 +213,37 @@ function handlePaymentSucceeded($db, $invoiceData) {
         return;
     }
     
-    // Create monthly order
+    // Create monthly order - insert directly
     try {
-        $logMsg = '[webhooks] Attempting to create order with data: user_id=' . $subscription['user_id'] . ', subscription_id=' . $subscription['id'] . ', product_id=' . $subscription['product_id'] . ', quantity=' . ($subscription['shipment_quantity'] ?? 1) . ', invoice_id=' . ($invoiceData['id'] ?? 'null');
-        error_log($logMsg);
-        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $logMsg . "\n", FILE_APPEND);
+        $invoiceId = $invoiceData['id'] ?? null;
+        $totalAmount = (float)$product['price'] * (int)($subscription['shipment_quantity'] ?? 1);
+        $status = 'pending';
         
-        $fulfillment = new SubscriptionFulfillment($db);
-        $orderId = $fulfillment->createSubscriptionOrder(
-            $subscription['user_id'],
-            $subscription['id'],
-            $subscription['product_id'],
-            $subscription['shipment_quantity'] ?? 1,
-            $invoiceData['id'] ?? null // Store invoice ID for tracking
-        );
+        $orderStmt = $db->prepare("
+            INSERT INTO orders 
+            (user_id, total_amount, status, shipping_address, stripe_invoice_id, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+            updated_at = NOW()
+        ");
         
-        $successMsg = '[webhooks] Order created from subscription: ' . $orderId;
-        error_log($successMsg);
-        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $successMsg . "\n", FILE_APPEND);
+        if (!$orderStmt) {
+            throw new Exception('Failed to prepare orders insert: ' . $db->error);
+        }
+        
+        $emptyAddress = '';
+        $orderStmt->bind_param('idsss', $subscription['user_id'], $totalAmount, $status, $emptyAddress, $invoiceId);
+        
+        if (!$orderStmt->execute()) {
+            throw new Exception('Failed to execute orders insert: ' . $orderStmt->error);
+        }
+        
+        $orderId = $orderStmt->insert_id;
+        $orderStmt->close();
+        
+        error_log('[webhooks] Order created: order_id=' . $orderId . ', amount=' . $totalAmount . ', invoice=' . $invoiceId);
     } catch (Exception $e) {
-        $errorMsg = '[webhooks] Error creating order: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString();
-        error_log($errorMsg);
-        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ERROR: ' . $e->getMessage() . "\n", FILE_APPEND);
+        error_log('[webhooks] Error creating order: ' . $e->getMessage());
     }
 }
 
