@@ -83,6 +83,7 @@ if (is_object($decoded)) {
 if ($role !== 'admin') {
     Response::error('Unauthorized - Admin access required', 403);
     exit;
+}
 
 $database = new Database();
 $db = $database->connect();
@@ -94,9 +95,19 @@ if (!$db) {
 
 // Route requests
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    handleGetSubscriptions($db);
+    try {
+        handleGetSubscriptions($db);
+    } catch (Exception $e) {
+        error_log('Error in handleGetSubscriptions: ' . $e->getMessage());
+        Response::error('Server error: ' . $e->getMessage(), 500);
+    }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    handleAction($db);
+    try {
+        handleAction($db);
+    } catch (Exception $e) {
+        error_log('Error in handleAction: ' . $e->getMessage());
+        Response::error('Server error: ' . $e->getMessage(), 500);
+    }
 } else {
     Response::error('Method not allowed', 405);
 }
