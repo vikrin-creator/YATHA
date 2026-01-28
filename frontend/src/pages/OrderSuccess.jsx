@@ -73,20 +73,21 @@ function OrderSuccess() {
 
       const data = await response.json()
 
-      if (data.success && data.data) {
-        // Find order matching this session
-        const matchedOrder = data.data.find(o => o.stripe_session_id === sessionId)
+      if (data.success && data.data && data.data.length > 0) {
+        // For subscription orders, the most recent order is the one just created
+        // Sort by created_at descending and grab the first one
+        const sortedOrders = [...data.data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        const mostRecentOrder = sortedOrders[0]
 
-        if (matchedOrder) {
-          setOrder(matchedOrder)
+        if (mostRecentOrder) {
+          setOrder(mostRecentOrder)
           setLoading(false)
         } else {
-          // Order not found yet - retry if we haven't exceeded max retries
+          // No orders found - retry if we haven't exceeded max retries
           if (retryCount < MAX_RETRIES) {
             setError(null)
             setRetryCount(prev => prev + 1)
           } else {
-            // Max retries exceeded
             setError('Order is taking longer to process. Please check your email for confirmation or contact support.')
             setLoading(false)
           }
