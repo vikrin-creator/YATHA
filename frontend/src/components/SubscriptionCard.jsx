@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getToken } from '../services/authService'
-
-const API_BASE_URL = window.location.hostname === 'localhost' 
-  ? "http://localhost:8000" 
-  : window.location.origin + '/backend';
+import { API_BASE_URL } from '../config/api'
 
 function SubscriptionCard({ subscription, onCanceled }) {
   const [isLoading, setIsLoading] = useState(false)
@@ -25,7 +22,7 @@ function SubscriptionCard({ subscription, onCanceled }) {
 
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE_URL}/api/subscriptions/${subscription.id}`, {
+      const response = await fetch(`${API_BASE_URL}/subscriptions/${subscription.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -63,8 +60,7 @@ function SubscriptionCard({ subscription, onCanceled }) {
     
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE_URL}/api/subscriptions/${subscription.id}`, {
-        method: 'GET',
+      const response = await fetch(`${API_BASE_URL}/subscriptions/${subscription.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -96,7 +92,7 @@ function SubscriptionCard({ subscription, onCanceled }) {
     
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE_URL}/api/subscriptions/${subscription.id}`, {
+      const response = await fetch(`${API_BASE_URL}/subscriptions/${subscription.id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -134,7 +130,7 @@ function SubscriptionCard({ subscription, onCanceled }) {
     
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE_URL}/api/subscriptions/${subscription.id}`, {
+      const response = await fetch(`${API_BASE_URL}/subscriptions/${subscription.id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -165,7 +161,7 @@ function SubscriptionCard({ subscription, onCanceled }) {
     
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE_URL}/api/subscriptions/${subscription.id}`, {
+      const response = await fetch(`${API_BASE_URL}/subscriptions/${subscription.id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -198,7 +194,7 @@ function SubscriptionCard({ subscription, onCanceled }) {
     
     try {
       const token = getToken()
-      const response = await fetch(`${API_BASE_URL}/api/subscriptions/${subscription.id}`, {
+      const response = await fetch(`${API_BASE_URL}/subscriptions/${subscription.id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

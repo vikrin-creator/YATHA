@@ -2,10 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { isAuthenticated, getCurrentUser, getToken } from '../services/authService'
 import apiClient from '../services/api'
-
-const API_BASE_URL = window.location.hostname === 'localhost' 
-  ? "http://localhost:8000" 
-  : window.location.origin + '/backend';
+import { API_BASE_URL } from '../config/api'
 
 function Checkout() {
   const navigate = useNavigate()
@@ -161,7 +158,7 @@ function Checkout() {
       // Route to appropriate endpoint based on purchase type
       if (subscriptionItems.length > 0) {
         // Handle subscription items
-        endpoint = `${API_BASE_URL}/api/subscriptions`
+        endpoint = `${API_BASE_URL}/subscriptions`
         // Add shipment_quantity from state
         const shipmentQty = shipmentQuantities[subscriptionItems[0].id] || 1
         payload = {
@@ -172,7 +169,7 @@ function Checkout() {
         }
       } else {
         // Handle one-time purchase items
-        endpoint = `${API_BASE_URL}/api/checkout`
+        endpoint = `${API_BASE_URL}/checkout`
         payload = {
           ...basePayload,
           items: onetimeItems,
