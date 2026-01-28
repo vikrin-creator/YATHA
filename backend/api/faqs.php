@@ -5,6 +5,21 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
+// Load .env file
+if (file_exists(__DIR__ . '/../.env')) {
+    $envLines = file(__DIR__ . '/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($envLines as $line) {
+        if (strpos($line, '=') !== false && strpos($line, '#') !== 0) {
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value, '\'"');
+            if (!getenv($key)) {
+                putenv("$key=$value");
+            }
+        }
+    }
+}
+
 require_once __DIR__ . '/../src/config/Database.php';
 require_once __DIR__ . '/../src/utils/JWT.php';
 require_once __DIR__ . '/../src/utils/Response.php';
