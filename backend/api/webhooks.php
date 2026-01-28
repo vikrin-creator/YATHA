@@ -112,6 +112,15 @@ try {
     $eventType = $event['type'] ?? null;
     $eventData = $event['data']['object'] ?? [];
     
+    // Log all events to file with details
+    $logEntry = date('Y-m-d H:i:s') . ' | Event: ' . $eventType;
+    if ($eventType === 'invoice.payment_succeeded') {
+        $logEntry .= ' | Subscription: ' . ($eventData['subscription'] ?? 'N/A') . ' | Invoice: ' . ($eventData['id'] ?? 'N/A');
+    } elseif ($eventType === 'customer.subscription.created') {
+        $logEntry .= ' | Sub ID: ' . ($eventData['id'] ?? 'N/A') . ' | Customer: ' . ($eventData['customer'] ?? 'N/A');
+    }
+    file_put_contents(__DIR__ . '/webhook_events.log', $logEntry . "\n", FILE_APPEND);
+    
     switch ($eventType) {
         case 'invoice.payment_succeeded':
             handlePaymentSucceeded($db, $eventData);
@@ -151,13 +160,28 @@ try {
 function handlePaymentSucceeded($db, $invoiceData) {
     error_log('[webhooks] Processing invoice.payment_succeeded');
     
+    // Extract subscription ID from nested structure
+    // Try multiple locations where Stripe might put it
     $stripeSubscriptionId = $invoiceData['subscription'] ?? null;
     
+    // If not found, try the parent subscription_details
+    if (!$stripeSubscriptionId && isset($invoiceData['parent']['subscription_details']['subscription'])) {
+        $stripeSubscriptionId = $invoiceData['parent']['subscription_details']['subscription'];
+    }
+    
+    // If still not found, try the line items
+    if (!$stripeSubscriptionId && isset($invoiceData['lines']['data'][0]['parent']['subscription_item_details']['subscription'])) {
+        $stripeSubscriptionId = $invoiceData['lines']['data'][0]['parent']['subscription_item_details']['subscription'];
+    }
+    
     if (!$stripeSubscriptionId) {
-        error_log('[webhooks] No subscription ID in invoice');
-        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - No subscription ID in invoice\n', FILE_APPEND);
+        error_log('[webhooks] No subscription ID found in invoice');
+        error_log('[webhooks] Invoice ID: ' . ($invoiceData['id'] ?? 'N/A'));
+        error_log('[webhooks] Invoice structure: ' . json_encode(array_keys($invoiceData)));
         return;
     }
+    
+    error_log('[webhooks] Found subscription ID: ' . $stripeSubscriptionId);
     
     error_log('[webhooks] Looking for subscription: ' . $stripeSubscriptionId);
     file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Looking for subscription: ' . $stripeSubscriptionId . "\n", FILE_APPEND);
@@ -202,16 +226,29 @@ function handlePaymentSucceeded($db, $invoiceData) {
     
     // Get product details
     $productStmt = $db->prepare("SELECT name, price FROM products WHERE id = ?");
+    if (!$productStmt) {
+        error_log('[webhooks] Product prepare failed: ' . $db->error);
+        return;
+    }
+    
     $productStmt->bind_param('i', $subscription['product_id']);
-    $productStmt->execute();
+    
+    if (!$productStmt->execute()) {
+        error_log('[webhooks] Product execute failed: ' . $productStmt->error);
+        $productStmt->close();
+        return;
+    }
+    
     $productResult = $productStmt->get_result();
     $product = $productResult->fetch_assoc();
     $productStmt->close();
     
     if (!$product) {
-        error_log('[webhooks] Product not found: ' . $subscription['product_id']);
+        error_log('[webhooks] Product not found for ID: ' . $subscription['product_id']);
         return;
     }
+    
+    error_log('[webhooks] Found product: id=' . $subscription['product_id'] . ', price=' . $product['price']);
     
     // Create monthly order - insert directly
     try {
@@ -240,6 +277,11 @@ function handlePaymentSucceeded($db, $invoiceData) {
         
         $orderId = $orderStmt->insert_id;
         $orderStmt->close();
+        
+        // Log successful order creation
+        file_put_contents(__DIR__ . '/webhook_events.log', 
+            date('Y-m-d H:i:s') . ' | ORDER CREATED | ID: ' . $orderId . ' | Invoice: ' . $invoiceId . ' | Amount: $' . $totalAmount . "\n", 
+            FILE_APPEND);
         
         error_log('[webhooks] Order created: order_id=' . $orderId . ', amount=' . $totalAmount . ', invoice=' . $invoiceId);
     } catch (Exception $e) {
