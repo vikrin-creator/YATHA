@@ -28,103 +28,112 @@ class SubscriptionFulfillment {
     public function createSubscriptionOrder($userId, $subscriptionId, $productId, $quantity = 1, $stripeInvoiceId = null) {
         error_log('[fulfillment] Creating subscription order: user=' . $userId . ', subscription=' . $subscriptionId . ', product=' . $productId . ', qty=' . $quantity);
         
-        // Get product details
-        $productStmt = $this->db->prepare("
-            SELECT price, name FROM products WHERE id = ?
-        ");
-        
-        if (!$productStmt) {
-            throw new Exception('Database error: ' . $this->db->error);
+        try {
+            // Get product details
+            $productStmt = $this->db->prepare("
+                SELECT price, name FROM products WHERE id = ?
+            ");
+            
+            if (!$productStmt) {
+                throw new Exception('Database prepare error: ' . $this->db->error);
+            }
+            
+            $productStmt->bind_param('i', $productId);
+            $productStmt->execute();
+            $productResult = $productStmt->get_result();
+            $product = $productResult->fetch_assoc();
+            $productStmt->close();
+            
+            if (!$product) {
+                throw new Exception('Product not found: ' . $productId);
+            }
+            
+            // Get user's default shipping address
+            $addressStmt = $this->db->prepare("
+                SELECT id, address, city, state, zip_code, country 
+                FROM user_addresses 
+                WHERE user_id = ? AND is_default = 1
+                LIMIT 1
+            ");
+            
+            if (!$addressStmt) {
+                throw new Exception('Database error: ' . $this->db->error);
+            }
+            
+            $addressStmt->bind_param('i', $userId);
+            $addressStmt->execute();
+            $addressResult = $addressStmt->get_result();
+            $address = $addressResult->fetch_assoc();
+            $addressStmt->close();
+            
+            // Format shipping address
+            $shippingAddress = '';
+            if ($address) {
+                $shippingAddress = json_encode([
+                    'address_id' => $address['id'],
+                    'address' => $address['address'] ?? '',
+                    'city' => $address['city'] ?? '',
+                    'state' => $address['state'] ?? '',
+                    'zip_code' => $address['zip_code'] ?? '',
+                    'country' => $address['country'] ?? ''
+                ]);
+            }
+            
+            // Calculate order total
+            $totalAmount = $product['price'] * $quantity;
+            
+            // Create order record
+            $orderStmt = $this->db->prepare("
+                INSERT INTO orders 
+                (user_id, total_amount, status, shipping_address, stripe_invoice_id, created_at)
+                VALUES (?, ?, ?, ?, ?, NOW())
+            ");
+            
+            if (!$orderStmt) {
+                throw new Exception('Database prepare error for orders insert: ' . $this->db->error);
+            }
+            
+            $status = 'pending';
+            $orderStmt->bind_param('idsss', $userId, $totalAmount, $status, $shippingAddress, $stripeInvoiceId);
+            
+            if (!$orderStmt->execute()) {
+                throw new Exception('Failed to create order: ' . $orderStmt->error);
+            }
+            
+            $orderId = $orderStmt->insert_id;
+            $orderStmt->close();
+            
+            error_log('[fulfillment] Order created: order_id=' . $orderId);
+            
+            // Create subscription_orders link record
+            $linkStmt = $this->db->prepare("
+                INSERT INTO subscription_orders 
+                (subscription_id, order_id, product_id, quantity, unit_price, shipment_status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            
+            if (!$linkStmt) {
+                throw new Exception('Database prepare error for subscription_orders insert: ' . $this->db->error);
+            }
+            
+            $shipmentStatus = 'pending';
+            error_log('[fulfillment] Binding params for subscription_orders: subscription_id=' . $subscriptionId . ', order_id=' . $orderId . ', product_id=' . $productId . ', quantity=' . $quantity . ', unit_price=' . $product['price'] . ', status=' . $shipmentStatus);
+            
+            $linkStmt->bind_param('iiiids', $subscriptionId, $orderId, $productId, $quantity, $product['price'], $shipmentStatus);
+            
+            if (!$linkStmt->execute()) {
+                throw new Exception('Failed to create subscription_orders link: ' . $linkStmt->error);
+            }
+            
+            $linkStmt->close();
+            
+            error_log('[fulfillment] Order created successfully: order_id=' . $orderId . ', amount=' . $totalAmount);
+            
+            return $orderId;
+        } catch (Exception $e) {
+            error_log('[fulfillment] EXCEPTION: ' . $e->getMessage());
+            throw $e;
         }
-        
-        $productStmt->bind_param('i', $productId);
-        $productStmt->execute();
-        $productResult = $productStmt->get_result();
-        $product = $productResult->fetch_assoc();
-        $productStmt->close();
-        
-        if (!$product) {
-            throw new Exception('Product not found: ' . $productId);
-        }
-        
-        // Get user's default shipping address
-        $addressStmt = $this->db->prepare("
-            SELECT id, address, city, state, zip_code, country 
-            FROM user_addresses 
-            WHERE user_id = ? AND is_default = 1
-            LIMIT 1
-        ");
-        
-        if (!$addressStmt) {
-            throw new Exception('Database error: ' . $this->db->error);
-        }
-        
-        $addressStmt->bind_param('i', $userId);
-        $addressStmt->execute();
-        $addressResult = $addressStmt->get_result();
-        $address = $addressResult->fetch_assoc();
-        $addressStmt->close();
-        
-        // Format shipping address
-        $shippingAddress = '';
-        if ($address) {
-            $shippingAddress = json_encode([
-                'address_id' => $address['id'],
-                'address' => $address['address'] ?? '',
-                'city' => $address['city'] ?? '',
-                'state' => $address['state'] ?? '',
-                'zip_code' => $address['zip_code'] ?? '',
-                'country' => $address['country'] ?? ''
-            ]);
-        }
-        
-        // Calculate order total
-        $totalAmount = $product['price'] * $quantity;
-        
-        // Create order record
-        $orderStmt = $this->db->prepare("
-            INSERT INTO orders 
-            (user_id, total_amount, status, shipping_address, stripe_invoice_id, created_at)
-            VALUES (?, ?, ?, ?, ?, NOW())
-        ");
-        
-        if (!$orderStmt) {
-            throw new Exception('Database error: ' . $this->db->error);
-        }
-        
-        $status = 'pending';
-        $orderStmt->bind_param('idsss', $userId, $totalAmount, $status, $shippingAddress, $stripeInvoiceId);
-        
-        if (!$orderStmt->execute()) {
-            throw new Exception('Failed to create order: ' . $orderStmt->error);
-        }
-        
-        $orderId = $orderStmt->insert_id;
-        $orderStmt->close();
-        
-        // Create subscription_orders link record
-        $linkStmt = $this->db->prepare("
-            INSERT INTO subscription_orders 
-            (subscription_id, order_id, product_id, quantity, unit_price, shipment_status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        
-        if (!$linkStmt) {
-            throw new Exception('Database error: ' . $this->db->error);
-        }
-        
-        $shipmentStatus = 'pending';
-        $linkStmt->bind_param('iiiids', $subscriptionId, $orderId, $productId, $quantity, $product['price'], $shipmentStatus);
-        
-        if (!$linkStmt->execute()) {
-            throw new Exception('Failed to create subscription_orders link: ' . $linkStmt->error);
-        }
-        
-        $linkStmt->close();
-        
-        error_log('[fulfillment] Order created successfully: order_id=' . $orderId . ', amount=' . $totalAmount);
-        
-        return $orderId;
     }
     
     /**
