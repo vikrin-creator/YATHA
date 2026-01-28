@@ -258,33 +258,58 @@ function handleSubscriptionCreated($db, $subscriptionData) {
     $currentPeriodEnd = date('Y-m-d H:i:s', $subscriptionData['current_period_end'] ?? (time() + 2592000)); // +30 days
     $nextBillingDate = date('Y-m-d', $subscriptionData['current_period_end'] ?? (time() + 2592000));
     
-    // Insert subscription into database
+    // Try to insert with all columns (including billing dates)
     $insertStmt = $db->prepare("
         INSERT INTO subscriptions 
         (user_id, stripe_subscription_id, stripe_customer_id, product_id, status, shipment_quantity, current_period_start, current_period_end, next_billing_date)
         VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)
     ");
     
+    // If that fails, try without billing date columns (in case they don't exist in old databases)
     if (!$insertStmt) {
-        error_log('[webhooks] Database prepare error: ' . $db->error);
-        return;
+        error_log('[webhooks] First insert attempt failed, trying without billing dates: ' . $db->error);
+        
+        $insertStmt = $db->prepare("
+            INSERT INTO subscriptions 
+            (user_id, stripe_subscription_id, stripe_customer_id, product_id, status, shipment_quantity)
+            VALUES (?, ?, ?, ?, 'active', ?)
+        ");
+        
+        if (!$insertStmt) {
+            error_log('[webhooks] Database prepare error (second attempt): ' . $db->error);
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to prepare subscription insert']);
+            return;
+        }
+        
+        $insertStmt->bind_param(
+            'issii',
+            $userId,
+            $stripeSubscriptionId,
+            $stripeCustomerId,
+            $productId,
+            $shipmentQuantity
+        );
+    } else {
+        // First attempt succeeded, use all columns
+        $status = 'active';
+        $insertStmt->bind_param(
+            'issiisss',
+            $userId,
+            $stripeSubscriptionId,
+            $stripeCustomerId,
+            $productId,
+            $shipmentQuantity,
+            $currentPeriodStart,
+            $currentPeriodEnd,
+            $nextBillingDate
+        );
     }
-    
-    $status = 'active';
-    $insertStmt->bind_param(
-        'issiisss',
-        $userId,
-        $stripeSubscriptionId,
-        $stripeCustomerId,
-        $productId,
-        $shipmentQuantity,
-        $currentPeriodStart,
-        $currentPeriodEnd,
-        $nextBillingDate
-    );
     
     if (!$insertStmt->execute()) {
         error_log('[webhooks] Failed to insert subscription: ' . $insertStmt->error);
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to insert subscription: ' . $insertStmt->error]);
         return;
     }
     
