@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getToken, isAuthenticated } from '../services/authService'
-
-const API_BASE_URL = window.location.hostname === 'localhost'
-  ? "http://localhost:8000"
-  : window.location.origin + '/backend'
+import { API_BASE_URL } from '../config/api'
 
 function OrderSuccess() {
   const [order, setOrder] = useState(null)
@@ -66,7 +63,7 @@ function OrderSuccess() {
       console.log(`[OrderSuccess] Fetching order for session: ${sessionId} (attempt ${retryCount + 1}/${MAX_RETRIES})`)
       
       // Query orders by stripe_session_id
-      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+      const response = await fetch(`${API_BASE_URL}/orders`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

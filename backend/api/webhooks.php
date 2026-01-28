@@ -272,7 +272,7 @@ function handleSubscriptionCreated($db, $subscriptionData) {
     
     $status = 'active';
     $insertStmt->bind_param(
-        'issiiiss',
+        'issiisss',
         $userId,
         $stripeSubscriptionId,
         $stripeCustomerId,
