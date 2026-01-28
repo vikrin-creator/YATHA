@@ -201,7 +201,9 @@ function handlePaymentSucceeded($db, $invoiceData) {
     
     // Create monthly order
     try {
-        error_log('[webhooks] Attempting to create order with data: user_id=' . $subscription['user_id'] . ', subscription_id=' . $subscription['id'] . ', product_id=' . $subscription['product_id'] . ', quantity=' . ($subscription['shipment_quantity'] ?? 1) . ', invoice_id=' . ($invoiceData['id'] ?? 'null'));
+        $logMsg = '[webhooks] Attempting to create order with data: user_id=' . $subscription['user_id'] . ', subscription_id=' . $subscription['id'] . ', product_id=' . $subscription['product_id'] . ', quantity=' . ($subscription['shipment_quantity'] ?? 1) . ', invoice_id=' . ($invoiceData['id'] ?? 'null');
+        error_log($logMsg);
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $logMsg . "\n", FILE_APPEND);
         
         $fulfillment = new SubscriptionFulfillment($db);
         $orderId = $fulfillment->createSubscriptionOrder(
@@ -212,13 +214,13 @@ function handlePaymentSucceeded($db, $invoiceData) {
             $invoiceData['id'] ?? null // Store invoice ID for tracking
         );
         
-        error_log('[webhooks] Order created from subscription: ' . $orderId);
+        $successMsg = '[webhooks] Order created from subscription: ' . $orderId;
+        error_log($successMsg);
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $successMsg . "\n", FILE_APPEND);
     } catch (Exception $e) {
-        error_log('[webhooks] Error creating order: ' . $e->getMessage());
-        error_log('[webhooks] Stack trace: ' . $e->getTraceAsString());
-        
-        // Write to debug file for troubleshooting
-        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - Error: ' . $e->getMessage() . "\n", FILE_APPEND);
+        $errorMsg = '[webhooks] Error creating order: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString();
+        error_log($errorMsg);
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ERROR: ' . $e->getMessage() . "\n", FILE_APPEND);
     }
 }
 
@@ -313,7 +315,9 @@ function handleSubscriptionCreated($db, $subscriptionData) {
     }
     
     if (!$insertStmt->execute()) {
-        error_log('[webhooks] Failed to insert subscription: ' . $insertStmt->error);
+        $errorMsg = '[webhooks] Failed to insert subscription: ' . $insertStmt->error;
+        error_log($errorMsg);
+        file_put_contents(__DIR__ . '/webhook_debug.log', date('Y-m-d H:i:s') . ' - ' . $errorMsg . "\n", FILE_APPEND);
         http_response_code(500);
         echo json_encode(['error' => 'Failed to insert subscription: ' . $insertStmt->error]);
         return;
