@@ -114,7 +114,7 @@ class SubscriptionFulfillment {
         }
         
         $shipmentStatus = 'pending';
-        $linkStmt->bind_param('iiidis', $subscriptionId, $orderId, $productId, $quantity, $product['price'], $shipmentStatus);
+        $linkStmt->bind_param('iiidds', $subscriptionId, $orderId, $productId, $quantity, $product['price'], $shipmentStatus);
         
         if (!$linkStmt->execute()) {
             throw new Exception('Failed to create subscription_orders link: ' . $linkStmt->error);
