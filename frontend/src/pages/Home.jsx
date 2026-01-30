@@ -151,9 +151,9 @@ function Home() {
                     <h3 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-[#111518]">{product.name}</h3>
                     {product.price && (
                       <div className="mt-2 flex items-center justify-center gap-2">
-                        <span className="text-lg font-bold text-moringa-green">${product.price}</span>
+                        <span className="text-lg font-bold text-moringa-green">${parseFloat(product.price).toFixed(2)}</span>
                         {product.original_price && product.original_price > product.price && (
-                          <span className="text-sm text-gray-500 line-through">${product.original_price}</span>
+                          <span className="text-sm text-gray-500 line-through">${parseFloat(product.original_price).toFixed(2)}</span>
                         )}
                       </div>
                     )}

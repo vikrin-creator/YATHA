@@ -121,7 +121,7 @@ function Checkout() {
 
   const subtotal = calculateSubtotal()
   const tax = subtotal * 0.1
-  const shipping = subtotal > 500 ? 0 : 50
+  const shipping = subtotal > 50 ? 0 : 7.99 // $7.99 shipping, free over $50
   const total = subtotal + tax + shipping
 
   const handlePlaceOrder = async (e) => {
@@ -482,7 +482,7 @@ function Checkout() {
                         </div>
                       )}
                     </div>
-                    <p className="font-bold text-[#111518] ml-2">${(item.price * item.quantity).toLocaleString()}</p>
+                    <p className="font-bold text-[#111518] ml-2">${(item.price * item.quantity).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
@@ -499,11 +499,11 @@ function Checkout() {
                 <div className="flex justify-between text-gray-700">
                   <span>Shipping</span>
                   <span className={shipping === 0 ? 'text-green-600 font-bold' : ''}>
-                    {shipping === 0 ? 'FREE' : `$${shipping.toLocaleString()}`}
+                    {shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}
                   </span>
                 </div>
                 {shipping === 0 && (
-                  <p className="text-xs text-green-600">Free shipping on orders over $500!</p>
+                  <p className="text-xs text-green-600">Free shipping on orders over $50!</p>
                 )}
               </div>
 

@@ -215,7 +215,7 @@ function ProductDetails() {
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-sm text-[#111518]">One-time purchase</span>
-                      <span className="font-semibold text-sm text-[#111518]">${product.price}</span>
+                      <span className="font-semibold text-sm text-[#111518]">${parseFloat(product.price).toFixed(2)}</span>
                     </div>
                   </div>
                 </label>
@@ -236,7 +236,7 @@ function ProductDetails() {
                       <span className="font-semibold text-sm text-primary">Subscribe & Save 10%</span>
                       <div className="text-right">
                         <span className="font-semibold text-sm text-primary block">${(product.price * 0.9).toFixed(2)}</span>
-                        <span className="text-xs text-neutral-grey line-through">${product.price}</span>
+                        <span className="text-xs text-neutral-grey line-through">${parseFloat(product.price).toFixed(2)}</span>
                       </div>
                     </div>
                     <p className="text-xs text-neutral-grey mt-0.5">Flexible delivery every 30 days. Cancel anytime.</p>
@@ -342,7 +342,7 @@ function ProductDetails() {
                     />
                   </div>
                   <h3 className="text-sm sm:text-base font-bold text-[#111518] line-clamp-2">{relatedProduct.name}</h3>
-                  <p className="text-primary font-bold text-sm sm:text-base">₹{relatedProduct.price}</p>
+                  <p className="text-primary font-bold text-sm sm:text-base">${parseFloat(relatedProduct.price).toFixed(2)}</p>
                   <button className="mt-1 w-full rounded-lg border border-primary text-primary font-semibold py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-primary hover:text-white transition-colors">Add to Cart</button>
                 </Link>
               ))}

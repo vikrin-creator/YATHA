@@ -218,7 +218,7 @@ function Navbar() {
                         <p className="text-sm font-semibold text-[#111518] truncate">{product.name}</p>
                         <p className="text-xs text-neutral-grey truncate">{product.short_description}</p>
                       </div>
-                      <p className="text-sm font-bold text-primary flex-shrink-0">₹{product.price}</p>
+                      <p className="text-sm font-bold text-primary flex-shrink-0">${parseFloat(product.price).toFixed(2)}</p>
                     </button>
                   ))}
                 </div>
@@ -550,7 +550,7 @@ function Navbar() {
                           <p className="text-xs font-semibold text-[#111518] truncate">{product.name}</p>
                           <p className="text-xs text-neutral-grey truncate">{product.short_description}</p>
                         </div>
-                        <p className="text-xs font-bold text-primary flex-shrink-0">₹{product.price}</p>
+                        <p className="text-xs font-bold text-primary flex-shrink-0">${parseFloat(product.price).toFixed(2)}</p>
                       </button>
                     ))
                   ) : (

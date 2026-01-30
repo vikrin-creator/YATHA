@@ -159,7 +159,7 @@ function OrderDetails() {
             </div>
             <div>
               <p className="text-neutral-grey text-sm">Order Amount</p>
-              <p className="text-neutral-dark font-medium text-lg mt-1">₹{parseFloat(order.total_amount).toFixed(2)}</p>
+              <p className="text-neutral-dark font-medium text-lg mt-1">${parseFloat(order.total_amount).toFixed(2)}</p>
             </div>
             <div>
               <p className="text-neutral-grey text-sm">Payment Status</p>

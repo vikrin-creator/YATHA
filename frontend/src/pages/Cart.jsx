@@ -52,7 +52,8 @@ function Cart() {
 
   const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0)
   const tax = subtotal * 0.1 // 10% tax
-  const total = subtotal + tax
+  const shipping = subtotal > 50 ? 0 : 7.99 // $7.99 shipping, free over $50
+  const total = subtotal + tax + shipping
 
   if (loading) {
     return (
@@ -198,7 +199,9 @@ function Cart() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-grey">Shipping</span>
-                    <span className="font-semibold text-moringa-green">Free</span>
+                    <span className={`font-semibold ${shipping === 0 ? 'text-moringa-green' : 'text-[#111518]'}`}>
+                      {shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}
+                    </span>
                   </div>
                 </div>
 

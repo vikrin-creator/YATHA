@@ -483,9 +483,9 @@ function ProductManagement() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">${product.price}</div>
+                    <div className="text-sm text-gray-900">${parseFloat(product.price).toFixed(2)}</div>
                     {product.original_price && (
-                      <div className="text-sm text-gray-500 line-through">${product.original_price}</div>
+                      <div className="text-sm text-gray-500 line-through">${parseFloat(product.original_price).toFixed(2)}</div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
