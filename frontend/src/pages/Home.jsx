@@ -149,7 +149,19 @@ function Home() {
                   </div>
                   <div>
                     <h3 className="mt-3 sm:mt-4 text-lg sm:text-xl font-bold text-[#111518]">{product.name}</h3>
-                    {product.price && (
+                    {(product.variants && product.variants.length > 0) ? (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-xs text-neutral-grey">Starting at</span>
+                          <span className="text-lg font-bold text-moringa-green">
+                            ${parseFloat(Math.min(...product.variants.map(v => v.price))).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-neutral-grey mt-1">
+                          {product.variants.length} {product.variants.length === 1 ? 'option' : 'options'} available
+                        </div>
+                      </div>
+                    ) : product.price && (
                       <div className="mt-2 flex items-center justify-center gap-2">
                         <span className="text-lg font-bold text-moringa-green">${parseFloat(product.price).toFixed(2)}</span>
                         {product.original_price && product.original_price > product.price && (

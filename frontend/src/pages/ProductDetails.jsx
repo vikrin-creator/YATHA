@@ -16,6 +16,7 @@ function ProductDetails() {
   const [quantity, setQuantity] = useState(1)
   const [purchaseType, setPurchaseType] = useState('subscribe')
   const [addedToCart, setAddedToCart] = useState(false)
+  const [selectedVariant, setSelectedVariant] = useState(null)
 
   useEffect(() => {
     fetchProductDetails()
@@ -28,6 +29,11 @@ function ProductDetails() {
       if (data.success) {
         const foundProduct = data.data.find(p => p.slug === slug)
         setProduct(foundProduct || null)
+        
+        // Set default variant if variants exist
+        if (foundProduct && foundProduct.variants && foundProduct.variants.length > 0) {
+          setSelectedVariant(foundProduct.variants[0])
+        }
         
         // Get related products (other products, excluding current one)
         const related = data.data.filter(p => p.slug !== slug).slice(0, 3)
@@ -92,26 +98,46 @@ function ProductDetails() {
   }
 
   const handleAddToCart = () => {
+    // If product has variants, require selection
+    if (product.variants && product.variants.length > 0 && !selectedVariant) {
+      alert('Please select a weight option')
+      return
+    }
+
     // Get existing cart from localStorage
     const existingCart = localStorage.getItem('cart')
     const cart = existingCart ? JSON.parse(existingCart) : []
 
+    // Use variant price if available, otherwise use product price
+    const priceToUse = selectedVariant ? selectedVariant.price : product.price
+    const basePrice = purchaseType === 'subscribe' ? priceToUse * 0.9 : priceToUse
+
+    // Create cart item with variant info
+    const cartItem = {
+      id: product.id,
+      name: product.name,
+      price: basePrice,
+      quantity: quantity,
+      image: product.image,
+      purchaseType: purchaseType
+    }
+
+    // Add variant info if selected
+    if (selectedVariant) {
+      cartItem.variantId = selectedVariant.id
+      cartItem.variantWeight = selectedVariant.weight
+      cartItem.variantPrice = selectedVariant.price
+    }
+
     // Check if product already exists in cart
-    const existingItem = cart.find(item => item.id === product.id)
+    const existingItem = cart.find(item => item.id === product.id && (!selectedVariant || item.variantId === selectedVariant.id))
 
     if (existingItem) {
       // Update quantity if product already in cart
       existingItem.quantity += quantity
     } else {
       // Add new item to cart
-      cart.push({
-        id: product.id,
-        name: product.name,
-        price: purchaseType === 'subscribe' ? product.price * 0.9 : product.price,
-        quantity: quantity,
-        image: product.image,
-        purchaseType: purchaseType
-      })
+      cart.push(cartItem)
     }
 
     // Save cart back to localStorage
@@ -201,6 +227,32 @@ function ProductDetails() {
                 <p>{product.description}</p>
               </div>
 
+              {/* Weight Options */}
+              {product.variants && product.variants.length > 0 && (
+                <div className="mb-4 sm:mb-6">
+                  <h3 className="text-sm font-semibold text-[#111518] mb-3">Size</h3>
+                  <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                    {product.variants.map((variant) => (
+                      <button
+                        key={variant.id}
+                        onClick={() => setSelectedVariant(variant)}
+                        className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border-2 transition-all text-xs font-medium whitespace-nowrap ${
+                          selectedVariant?.id === variant.id
+                            ? 'border-moringa-green bg-moringa-green/5 text-moringa-green'
+                            : 'border-neutral-grey/30 text-[#111518] hover:border-moringa-green/50'
+                        }`}
+                      >
+                        <div className="font-bold text-xs">{variant.weight}</div>
+                        <div className="text-xs">${parseFloat(variant.price).toFixed(2)}</div>
+                        {variant.original_price && (
+                          <div className="text-xs text-neutral-grey line-through">${parseFloat(variant.original_price).toFixed(2)}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Purchase Options */}
               <div className="bg-white rounded-lg border border-neutral-grey/20 p-3 sm:p-4 shadow-sm mb-4 sm:mb-6">
                 <label className="flex items-start gap-3 cursor-pointer mb-3">
@@ -215,7 +267,9 @@ function ProductDetails() {
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-sm text-[#111518]">One-time purchase</span>
-                      <span className="font-semibold text-sm text-[#111518]">${parseFloat(product.price).toFixed(2)}</span>
+                      <span className="font-semibold text-sm text-[#111518]">
+                        ${parseFloat(selectedVariant ? selectedVariant.price : product.price).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </label>
@@ -235,8 +289,12 @@ function ProductDetails() {
                     <div className="flex justify-between items-center">
                       <span className="font-semibold text-sm text-primary">Subscribe & Save 10%</span>
                       <div className="text-right">
-                        <span className="font-semibold text-sm text-primary block">${(product.price * 0.9).toFixed(2)}</span>
-                        <span className="text-xs text-neutral-grey line-through">${parseFloat(product.price).toFixed(2)}</span>
+                        <span className="font-semibold text-sm text-primary block">
+                          ${(parseFloat(selectedVariant ? selectedVariant.price : product.price) * 0.9).toFixed(2)}
+                        </span>
+                        <span className="text-xs text-neutral-grey line-through">
+                          ${parseFloat(selectedVariant ? selectedVariant.price : product.price).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                     <p className="text-xs text-neutral-grey mt-0.5">Flexible delivery every 30 days. Cancel anytime.</p>

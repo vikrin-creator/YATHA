@@ -111,72 +111,132 @@ function Cart() {
             {/* Cart Items */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                {/* Table Headers */}
+                <div className="hidden md:grid md:grid-cols-4 gap-4 px-6 py-4 border-b border-neutral-grey/20 bg-organic-beige/20">
+                  <div className="text-sm font-bold text-[#111518]">Product</div>
+                  <div className="text-sm font-bold text-[#111518] text-center">Price</div>
+                  <div className="text-sm font-bold text-[#111518] text-center">Quantity</div>
+                  <div className="text-sm font-bold text-[#111518] text-right">Total</div>
+                </div>
+
+                {/* Cart Items */}
                 {cartItems.map((item, index) => (
                   <div
                     key={item.id}
-                    className={`flex items-center gap-3 p-4 ${
+                    className={`${
                       index !== cartItems.length - 1 ? 'border-b border-neutral-grey/10' : ''
-                    } hover:bg-organic-beige/10 transition-colors`}
+                    } hover:bg-organic-beige/5 transition-colors`}
                   >
-                    {/* Product Image */}
-                    <div className="w-16 h-16 bg-organic-beige rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
-                      {item.image ? (
-                        <img
-                          src={getFullImageUrl(item.image)}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.src = `${API_BASE_URL}/public/uploads/images/placeholder.png`
-                          }}
+                    {/* Mobile View */}
+                    <div className="md:hidden p-4">
+                      <div className="flex gap-3 mb-3">
+                        {/* Product Image */}
+                        <div className="w-20 h-20 bg-organic-beige rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                          {item.image ? (
+                            <img
+                              src={getFullImageUrl(item.image)}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.src = `${API_BASE_URL}/public/uploads/images/placeholder.png`
+                              }}
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-2xl text-neutral-grey/30">
+                              image_not_supported
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Product Info */}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-[#111518] text-sm">{item.name}</h3>
+                          {item.size && <p className="text-xs text-neutral-grey italic">Size: {item.size}</p>}
+                          <p className="text-primary font-bold text-sm mt-1">${parseFloat(item.price).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-3 justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-neutral-grey">Qty:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                            className="w-12 text-center text-sm font-semibold text-[#111518] border border-neutral-grey/20 rounded px-2 py-1"
+                          />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-neutral-grey">Total</p>
+                          <p className="text-lg font-bold text-primary">${(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="flex-1 py-2 px-3 bg-red-50 text-red-600 font-semibold rounded hover:bg-red-100 transition-colors text-sm flex items-center justify-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Desktop View */}
+                    <div className="hidden md:grid md:grid-cols-4 gap-4 px-6 py-5 items-center">
+                      {/* Product Column */}
+                      <div className="flex gap-3">
+                        <div className="w-16 h-16 bg-organic-beige rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
+                          {item.image ? (
+                            <img
+                              src={getFullImageUrl(item.image)}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.src = `${API_BASE_URL}/public/uploads/images/placeholder.png`
+                              }}
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-2xl text-neutral-grey/30">
+                              image_not_supported
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-[#111518] text-sm">{item.name}</h3>
+                          {item.size && <p className="text-xs text-neutral-grey italic">Size: {item.size}</p>}
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="mt-1 text-xs bg-[#111518] text-white px-3 py-1 rounded font-semibold hover:bg-[#111518]/80 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Price Column */}
+                      <div className="text-center">
+                        <p className="font-semibold text-[#111518]">${parseFloat(item.price).toFixed(2)}</p>
+                      </div>
+
+                      {/* Quantity Column */}
+                      <div className="flex justify-center">
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                          className="w-16 text-center text-sm font-semibold text-[#111518] border border-neutral-grey/20 rounded px-2 py-1"
                         />
-                      ) : (
-                        <span className="material-symbols-outlined text-2xl text-neutral-grey/30">
-                          image_not_supported
-                        </span>
-                      )}
-                    </div>
+                      </div>
 
-                    {/* Product Details */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-[#111518] truncate">{item.name}</h3>
-                      <p className="text-primary font-bold text-sm">${parseFloat(item.price).toFixed(2)}</p>
+                      {/* Total Column */}
+                      <div className="text-right">
+                        <p className="font-semibold text-[#111518] text-lg">${(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
+                      </div>
                     </div>
-
-                    {/* Quantity Controls */}
-                    <div className="flex items-center gap-1 bg-organic-beige rounded p-1">
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="w-7 h-7 flex items-center justify-center text-primary hover:bg-white rounded transition-colors text-sm"
-                      >
-                        <span className="material-symbols-outlined text-base">remove</span>
-                      </button>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
-                        className="w-8 text-center text-xs font-semibold text-[#111518] bg-transparent border-0 outline-none"
-                      />
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-7 h-7 flex items-center justify-center text-primary hover:bg-white rounded transition-colors text-sm"
-                      >
-                        <span className="material-symbols-outlined text-base">add</span>
-                      </button>
-                    </div>
-
-                    {/* Subtotal */}
-                    <div className="text-right min-w-max">
-                      <p className="text-xs text-neutral-grey">${(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
-                    </div>
-
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 rounded transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-base">delete</span>
-                    </button>
                   </div>
                 ))}
               </div>

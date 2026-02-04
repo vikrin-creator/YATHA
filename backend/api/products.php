@@ -107,6 +107,18 @@ function getProducts($db, $product_id = null)
             while ($img = $img_result->fetch_assoc()) {
                 $product['additional_images'][] = $img['image_url'];
             }
+            
+            // Get product variants
+            $var_query = "SELECT id, weight, price, original_price, stock_quantity FROM product_variants WHERE product_id = ? ORDER BY created_at ASC";
+            $var_stmt = $db->prepare($var_query);
+            $var_stmt->bind_param('i', $product_id);
+            $var_stmt->execute();
+            $var_result = $var_stmt->get_result();
+            $product['variants'] = [];
+            while ($var = $var_result->fetch_assoc()) {
+                $product['variants'][] = $var;
+            }
+            
             Response::success($product, 'Product fetched successfully');
         } else {
             Response::error('Product not found', 404);
@@ -128,6 +140,18 @@ function getProducts($db, $product_id = null)
             while ($img = $img_result->fetch_assoc()) {
                 $row['additional_images'][] = $img['image_url'];
             }
+            
+            // Get product variants
+            $var_query = "SELECT id, weight, price, original_price, stock_quantity FROM product_variants WHERE product_id = ? ORDER BY created_at ASC";
+            $var_stmt = $db->prepare($var_query);
+            $var_stmt->bind_param('i', $row['id']);
+            $var_stmt->execute();
+            $var_result = $var_stmt->get_result();
+            $row['variants'] = [];
+            while ($var = $var_result->fetch_assoc()) {
+                $row['variants'][] = $var;
+            }
+            
             $products[] = $row;
         }
 
@@ -172,6 +196,22 @@ function createProduct($db, $input)
                 if (!empty($img_url)) {
                     $img_stmt->bind_param('isi', $product_id, $img_url, $index);
                     $img_stmt->execute();
+                }
+            }
+        }
+        
+        // Save product variants if provided
+        if (isset($input['variants']) && is_array($input['variants'])) {
+            $var_query = "INSERT INTO product_variants (product_id, weight, price, original_price, stock_quantity, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
+            $var_stmt = $db->prepare($var_query);
+            foreach ($input['variants'] as $variant) {
+                if (!empty($variant['weight']) && isset($variant['price'])) {
+                    $weight = trim($variant['weight']);
+                    $price = floatval($variant['price']);
+                    $original_price = isset($variant['original_price']) && !empty($variant['original_price']) ? floatval($variant['original_price']) : null;
+                    $stock_quantity = isset($variant['stock_quantity']) ? intval($variant['stock_quantity']) : 0;
+                    $var_stmt->bind_param('isddi', $product_id, $weight, $price, $original_price, $stock_quantity);
+                    $var_stmt->execute();
                 }
             }
         }
@@ -287,6 +327,30 @@ function updateProduct($db, $input, $product_id)
                     $img_stmt->bind_param('isi', $product_id, $img_url, $index);
                     $img_stmt->execute();
                     error_log("Saved additional image: " . $img_url);
+                }
+            }
+        }
+        
+        // Update product variants if provided
+        if (isset($input['variants']) && is_array($input['variants'])) {
+            // Delete existing variants first
+            $del_var_query = "DELETE FROM product_variants WHERE product_id = ?";
+            $del_var_stmt = $db->prepare($del_var_query);
+            $del_var_stmt->bind_param('i', $product_id);
+            $del_var_stmt->execute();
+            
+            // Insert new variants
+            $var_query = "INSERT INTO product_variants (product_id, weight, price, original_price, stock_quantity, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
+            $var_stmt = $db->prepare($var_query);
+            foreach ($input['variants'] as $variant) {
+                if (!empty($variant['weight']) && isset($variant['price'])) {
+                    $weight = trim($variant['weight']);
+                    $price = floatval($variant['price']);
+                    $original_price = isset($variant['original_price']) && !empty($variant['original_price']) ? floatval($variant['original_price']) : null;
+                    $stock_quantity = isset($variant['stock_quantity']) ? intval($variant['stock_quantity']) : 0;
+                    $var_stmt->bind_param('isddi', $product_id, $weight, $price, $original_price, $stock_quantity);
+                    $var_stmt->execute();
+                    error_log("Saved variant: weight=$weight, price=$price");
                 }
             }
         }

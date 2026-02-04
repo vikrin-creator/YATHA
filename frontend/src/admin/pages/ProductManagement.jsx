@@ -22,7 +22,8 @@ function ProductManagement() {
     category: 'Superfood Powders',
     status: 'active',
     featured: false,
-    image: ''
+    image: '',
+    variants: []
   })
   const [imageFiles, setImageFiles] = useState({
     main: null,
@@ -33,6 +34,12 @@ function ProductManagement() {
     additional: ['', '', '']
   })
   const [uploading, setUploading] = useState(false)
+  const [newVariant, setNewVariant] = useState({
+    weight: '',
+    price: '',
+    original_price: '',
+    stock_quantity: ''
+  })
 
   useEffect(() => {
     fetchProducts()
@@ -99,11 +106,18 @@ function ProductManagement() {
       category: 'Superfood Powders',
       status: 'active',
       featured: false,
-      images: []
+      images: [],
+      variants: []
     })
     setImageFiles({ main: null, additional: [null, null, null] })
     setImagePreview({ main: '', additional: ['', '', ''] })
     setUploading(false)
+    setNewVariant({
+      weight: '',
+      price: '',
+      original_price: '',
+      stock_quantity: ''
+    })
   }
   const handleAddProduct = () => {
     setEditingProduct(null)
@@ -118,10 +132,17 @@ function ProductManagement() {
       category: 'Superfood Powders',
       status: 'active',
       featured: false,
-      images: []
+      images: [],
+      variants: []
     })
     setImageFiles({ main: null, additional: [null, null, null] })
     setImagePreview({ main: '', additional: ['', '', ''] })
+    setNewVariant({
+      weight: '',
+      price: '',
+      original_price: '',
+      stock_quantity: ''
+    })
     setShowAddModal(true)
   }
 
@@ -138,7 +159,8 @@ function ProductManagement() {
       category: product.category || 'Superfood Powders',
       status: product.status || 'active',
       featured: product.featured || false,
-      image: product.image || ''
+      image: product.image || '',
+      variants: product.variants || []
     })
     
     // Helper to construct full image URL from database path
@@ -167,6 +189,12 @@ function ProductManagement() {
       additional: additionalPreviews
     })
     setImageFiles({ main: null, additional: [null, null, null] })
+    setNewVariant({
+      weight: '',
+      price: '',
+      original_price: '',
+      stock_quantity: ''
+    })
     setShowAddModal(true)
   }
 
@@ -185,6 +213,68 @@ function ProductManagement() {
         .trim()
       setFormData(prev => ({ ...prev, slug }))
     }
+  }
+
+  const handleVariantInputChange = (e) => {
+    const { name, value } = e.target
+    setNewVariant(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleAddVariant = () => {
+    if (!newVariant.weight || !newVariant.price) {
+      alert('Please fill in weight and price')
+      return
+    }
+    
+    const variantToAdd = {
+      id: newVariant.id || Date.now(), // Use existing id if editing, or create new timestamp-based id
+      weight: newVariant.weight,
+      price: parseFloat(newVariant.price),
+      original_price: newVariant.original_price ? parseFloat(newVariant.original_price) : null,
+      stock_quantity: parseInt(newVariant.stock_quantity) || 0
+    }
+    
+    if (newVariant.id) {
+      // Editing existing variant
+      setFormData(prev => ({
+        ...prev,
+        variants: prev.variants.map(v => v.id === newVariant.id ? variantToAdd : v)
+      }))
+    } else {
+      // Adding new variant
+      setFormData(prev => ({
+        ...prev,
+        variants: [...prev.variants, variantToAdd]
+      }))
+    }
+    
+    // Reset the form
+    setNewVariant({
+      weight: '',
+      price: '',
+      original_price: '',
+      stock_quantity: ''
+    })
+  }
+
+  const handleEditVariant = (variant) => {
+    setNewVariant({
+      id: variant.id,
+      weight: variant.weight,
+      price: variant.price,
+      original_price: variant.original_price || '',
+      stock_quantity: variant.stock_quantity || ''
+    })
+  }
+
+  const handleDeleteVariant = (variantId) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: prev.variants.filter(v => v.id !== variantId)
+    }))
   }
 
   const handleImageChange = (e, type, index = null) => {
@@ -666,6 +756,110 @@ function ProductManagement() {
                         <span className="ml-2 text-sm font-medium text-gray-700">Featured Product</span>
                       </label>
                     </div>
+                  </div>
+
+                  {/* Product Weights/Variants Section */}
+                  <div className="mt-6 pt-6 border-t">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Weight Options</h3>
+                    
+                    {/* Add/Edit Variant Form */}
+                    <div className="bg-gray-50 p-4 rounded-lg mb-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
+                          <input
+                            type="text"
+                            name="weight"
+                            placeholder="e.g., 100g, 250g, 500g"
+                            value={newVariant.weight}
+                            onChange={handleVariantInputChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-moringa-green focus:border-moringa-green text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                          <input
+                            type="number"
+                            name="price"
+                            placeholder="0.00"
+                            value={newVariant.price}
+                            onChange={handleVariantInputChange}
+                            step="0.01"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-moringa-green focus:border-moringa-green text-sm"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Original Price ($)</label>
+                          <input
+                            type="number"
+                            name="original_price"
+                            placeholder="Optional"
+                            value={newVariant.original_price}
+                            onChange={handleVariantInputChange}
+                            step="0.01"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-moringa-green focus:border-moringa-green text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+                          <input
+                            type="number"
+                            name="stock_quantity"
+                            placeholder="0"
+                            value={newVariant.stock_quantity}
+                            onChange={handleVariantInputChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-moringa-green focus:border-moringa-green text-sm"
+                          />
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={handleAddVariant}
+                        className="w-full bg-moringa-green text-white px-3 py-2 rounded-lg hover:bg-moringa-green/90 transition-colors text-sm font-medium"
+                      >
+                        {newVariant.id ? 'Update Weight Option' : 'Add Weight Option'}
+                      </button>
+                    </div>
+                    
+                    {/* Variants List */}
+                    {formData.variants && formData.variants.length > 0 ? (
+                      <div className="space-y-2">
+                        {formData.variants.map((variant) => (
+                          <div key={variant.id} className="flex items-center justify-between bg-white p-3 border border-gray-200 rounded-lg">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">{variant.weight}</p>
+                              <p className="text-sm text-gray-600">
+                                Price: ${parseFloat(variant.price).toFixed(2)}
+                                {variant.original_price && ` (Original: $${parseFloat(variant.original_price).toFixed(2)})`}
+                                {variant.stock_quantity > 0 && ` | Stock: ${variant.stock_quantity}`}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditVariant(variant)}
+                                className="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded text-sm"
+                              >
+                                <span className="material-symbols-outlined text-lg">edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteVariant(variant.id)}
+                                className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded text-sm"
+                              >
+                                <span className="material-symbols-outlined text-lg">delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No weight options added yet</p>
+                    )}
                   </div>
                 </div>
                 
