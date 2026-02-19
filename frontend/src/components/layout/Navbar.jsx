@@ -157,6 +157,9 @@ function Navbar() {
              <Link to="/" onClick={scrollToTop} className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
               Home
             </Link>
+            <Link to="/shop" onClick={scrollToTop} className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
+              Shop
+            </Link>
             <Link to="/about" onClick={scrollToTop} className="text-[#111518] text-sm font-medium leading-normal hover:text-primary">
               About
             </Link>

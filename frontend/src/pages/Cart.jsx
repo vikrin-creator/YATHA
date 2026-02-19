@@ -113,7 +113,7 @@ function Cart() {
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 {/* Table Headers */}
                 <div className="hidden md:grid md:grid-cols-4 gap-4 px-6 py-4 border-b border-neutral-grey/20 bg-organic-beige/20">
-                  <div className="text-sm font-bold text-[#111518]">Product</div>
+                  <div className="text-sm font-bold text-[#111518] text-left">Product</div>
                   <div className="text-sm font-bold text-[#111518] text-center">Price</div>
                   <div className="text-sm font-bold text-[#111518] text-center">Quantity</div>
                   <div className="text-sm font-bold text-[#111518] text-right">Total</div>

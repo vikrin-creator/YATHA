@@ -84,6 +84,9 @@ if (empty($request_path)) {
             'POST /api/addresses',
             'PUT /api/addresses',
             'DELETE /api/addresses?id={id}',
+            'GET /api/promotions',
+            'GET /api/promotions/admin',
+            'PUT /api/promotions/{id}',
             'GET /api/admin/users',
             'GET /api/admin/orders',
             'POST /api/upload-image'
@@ -133,6 +136,9 @@ switch ($route) {
         break;
     case 'subscriptions':
         require_once __DIR__ . '/subscriptions.php';
+        break;
+    case 'promotions':
+        require_once __DIR__ . '/promotions.php';
         break;
     case 'admin':
         // Route admin endpoints

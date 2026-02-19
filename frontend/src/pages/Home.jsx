@@ -1,13 +1,28 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import HeroImage from '../assets/images/HeroSection.png'
 
 function Home() {
   const [products, setProducts] = useState([])
+  const [promotion, setPromotion] = useState(null)
+  const [promotionLoading, setPromotionLoading] = useState(true)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+  const isFirstLoadRef = { current: true }
 
   useEffect(() => {
     fetchProducts()
+    fetchPromotion()
+    
+    // Poll for promotion updates every 5 seconds
+    // This allows real-time enable/disable from admin panel
+    const promotionInterval = setInterval(() => {
+      isFirstLoadRef.current = false // Not the first load anymore
+      fetchPromotion(false) // Pass false to skip loading state on polling
+    }, 5000)
+    
+    return () => clearInterval(promotionInterval)
   }, [])
 
   const API_BASE_URL = window.location.hostname === 'localhost' 
@@ -30,6 +45,32 @@ function Home() {
     }
   }
 
+  const fetchPromotion = async (showLoading = true) => {
+    try {
+      if (showLoading && isFirstLoadRef.current) {
+        setPromotionLoading(true)
+      }
+      const response = await fetch(`${API_BASE_URL}/api/promotions`)
+      const data = await response.json()
+      console.log('Promotion API Response:', data)
+      if (data.success && data.data) {
+        console.log('Promotion data:', data.data)
+        setPromotion(data.data)
+      } else {
+        // If no data, set promotion to null (banner disabled or no promotion)
+        console.log('No promotion data returned')
+        setPromotion(null)
+      }
+    } catch (error) {
+      console.error('Error fetching promotion:', error)
+    } finally {
+      if (showLoading && isFirstLoadRef.current) {
+        setPromotionLoading(false)
+        isFirstLoadRef.current = false
+      }
+    }
+  }
+
   const getFullImageUrl = (imgPath) => {
     if (!imgPath) return `${API_BASE_URL}/public/uploads/images/placeholder.png`
     // If already has full URL, return as-is
@@ -38,6 +79,67 @@ function Home() {
     if (imgPath.startsWith('/')) return `${API_BASE_URL}${imgPath}`
     // If it's just a filename, add full path
     return `${API_BASE_URL}/public/uploads/images/${imgPath}`
+  }
+
+  const handleBannerClick = async () => {
+    if (!promotion) {
+      toast.error('Promotion not available')
+      return
+    }
+
+    try {
+      // Get current cart
+      const savedCart = localStorage.getItem('cart')
+      const cart = savedCart ? JSON.parse(savedCart) : []
+
+      // Calculate discounted price
+      const productPrice = parseFloat(promotion.price)
+      const discountPercentage = parseFloat(promotion.discount_percentage)
+      const discountAmount = productPrice * (discountPercentage / 100)
+      const discountedPrice = productPrice - discountAmount
+
+      // Create cart item with promotional discount
+      const newItem = {
+        id: promotion.product_id,
+        name: promotion.name,
+        price: parseFloat(discountedPrice.toFixed(2)),
+        original_price: parseFloat(promotion.original_price || productPrice),
+        quantity: 1,
+        image: promotion.image,
+        slug: promotion.slug,
+        promotion_discount_percentage: discountPercentage
+      }
+
+      // Check if item already in cart
+      const existingItemIndex = cart.findIndex(
+        item => item.id === newItem.id
+      )
+
+      if (existingItemIndex >= 0) {
+        // If same product is in cart, increase quantity
+        cart[existingItemIndex].quantity += 1
+      } else {
+        // Add new item to cart
+        cart.push(newItem)
+      }
+
+      // Save updated cart to localStorage
+      localStorage.setItem('cart', JSON.stringify(cart))
+      
+      // Dispatch event to update navbar cart count
+      window.dispatchEvent(new Event('cartUpdated'))
+
+      // Show success message
+      toast.success('Added to cart with promotional discount!')
+      
+      // Navigate to cart
+      setTimeout(() => {
+        navigate('/cart')
+      }, 500)
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      toast.error('Failed to add to cart')
+    }
   }
 
   return (
@@ -50,7 +152,7 @@ function Home() {
         }}
       >
         <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold leading-tight tracking-tight">
             Purity in Every Scoop 
           </h1>
           <p className="text-3xl sm:text-4xl md:text-5xl font-medium mt-2">
@@ -59,10 +161,28 @@ function Home() {
           <p className="mt-3 sm:mt-4 text-base sm:text-lg md:text-xl font-light text-amber-500">
             Raw, organic superfoods sourced with integrity for your daily vitality.
           </p>
-          <div className="mt-6 sm:mt-8">
-            <div className="inline-block bg-amber-500 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-bold text-base sm:text-lg cursor-pointer hover:bg-amber-600 hover:scale-105 hover:shadow-lg transition-all duration-300">
-              <span className="text-xl font-black">Buy Moringa</span> this month and get 30% OFF
+          <div className="mt-6 sm:mt-8 flex flex-col gap-4 justify-center items-center">
+            <div>
+              {promotionLoading ? (
+                // Loading skeleton - matches banner style
+                <div className="inline-block bg-amber-200 text-white py-2 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-sm sm:text-base animate-pulse">
+                  <span className="text-base sm:text-lg font-black">Loading offer...</span>
+                </div>
+              ) : promotion ? (
+                <button 
+                  onClick={handleBannerClick}
+                  className="inline-block bg-amber-500 text-white py-2 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-sm sm:text-base cursor-pointer hover:bg-amber-600 hover:scale-105 hover:shadow-lg transition-all duration-300"
+                >
+                  <span className="text-base sm:text-xl font-black">{promotion.button_text}</span>
+                </button>
+              ) : null}
             </div>
+            <button 
+              onClick={() => navigate('/shop')}
+              className="inline-block bg-blue-600 text-white py-2 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-sm sm:text-base cursor-pointer hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300"
+            >
+              <span className="text-base sm:text-xl font-black">Shop Now</span>
+            </button>
           </div>
         </div>
       </section>

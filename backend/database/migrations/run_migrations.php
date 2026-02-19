@@ -16,10 +16,29 @@ if (!$db) {
 
 echo "Running migrations...\n\n";
 
-// Migration 1: Add Stripe columns to orders table
+// Migration 1: Create promotions table
+echo "→ Creating promotions table...\n";
+
+// Migration 2: Add Stripe columns to orders table
 echo "→ Adding Stripe tracking columns to orders table...\n";
 
 $migrations = [
+    // Create promotions table
+    "CREATE TABLE IF NOT EXISTS promotions (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      button_text VARCHAR(255) NOT NULL DEFAULT 'Buy Moringa this month and get 30% OFF',
+      product_id INT NOT NULL,
+      discount_percentage DECIMAL(5, 2) NOT NULL DEFAULT 30.00,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+    )",
+    // Insert default promotion
+    "INSERT INTO promotions (button_text, product_id, discount_percentage, is_active) 
+     SELECT 'Buy Moringa this month and get 30% OFF', 1, 30.00, TRUE 
+     WHERE NOT EXISTS (SELECT 1 FROM promotions LIMIT 1)",
+    // Stripe columns
     "ALTER TABLE orders 
     ADD COLUMN stripe_session_id VARCHAR(255) UNIQUE AFTER user_id,
     ADD COLUMN stripe_invoice_id VARCHAR(255) UNIQUE AFTER stripe_session_id,

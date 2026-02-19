@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './layouts/Layout'
 import Home from './pages/Home'
+import Shop from './pages/Shop'
 import About from './pages/About'
 import ProductDetails from './pages/ProductDetails'
 import Profile from './pages/Profile'
@@ -24,6 +25,7 @@ import OrderManagement from './admin/pages/OrderManagement'
 import OrderDetails from './admin/pages/OrderDetails'
 import UserManagement from './admin/pages/UserManagement'
 import SubscriptionManagement from './admin/pages/SubscriptionManagement'
+import PromotionBannerManagement from './admin/pages/PromotionBannerManagement'
 
 function App() {
   return (
@@ -36,8 +38,7 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<AdminDashboard />} />
-          <Route path="products" element={<ProductManagement />} />
-          <Route path="reviews" element={<ReviewManagement />} />
+          <Route path="products" element={<ProductManagement />} />          <Route path="promotions" element={<PromotionBannerManagement />} />          <Route path="reviews" element={<ReviewManagement />} />
           <Route path="faqs" element={<FAQManagement />} />
           <Route path="orders" element={<OrderManagement />} />
           <Route path="orders/:orderId" element={<OrderDetails />} />
@@ -53,6 +54,7 @@ function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/shop" element={<Shop />} />
               <Route path="/about" element={<About />} />
               <Route path="/profile" element={
                 <ProtectedRoute>
