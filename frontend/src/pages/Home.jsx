@@ -179,9 +179,9 @@ function Home() {
             </div>
             <button 
               onClick={() => navigate('/shop')}
-              className="inline-block bg-blue-600 text-white py-2 sm:py-3 px-3 sm:px-6 rounded-lg font-bold text-sm sm:text-base cursor-pointer hover:bg-blue-700 hover:scale-105 hover:shadow-lg transition-all duration-300"
+              className="inline-block bg-transparent text-amber-500 py-2 sm:py-2 px-4 sm:px-5 rounded-lg font-semibold text-sm sm:text-base cursor-pointer border-2 border-amber-500 hover:bg-amber-50 hover:scale-105 hover:shadow-lg transition-all duration-300"
             >
-              <span className="text-base sm:text-xl font-black">Shop Now</span>
+              <span className="text-sm sm:text-base font-semibold">Shop Now</span>
             </button>
           </div>
         </div>
